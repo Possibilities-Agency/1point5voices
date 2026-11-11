@@ -1,7 +1,7 @@
 # 1.5 Billion Voices — deploy on Cloudflare
 
 What's in this folder
-- `public/index.html` — the website
+- `public/index.html` — the website (plus `public/img/` photos, `public/data/world.json` map shapes, `public/privacy.html`)
 - `functions/api/sign.js` — saves a signature (blocks duplicate emails)
 - `functions/api/stats.js` — live totals for the counter, map and wall (never exposes emails)
 - `functions/api/media/` — voice and video pledges: upload, approved-clip gallery, playback
@@ -62,6 +62,7 @@ D1 → `voices` → Console:
 - Opted-in mailing list: `SELECT first_name, email, country FROM signatures WHERE updates = 1;`
 
 ## Notes
+- Share previews (WhatsApp, Facebook, X, LinkedIn) use `public/img/share-card.jpg` and point to https://voicesof1point5.org. If the domain changes, update the `og:url` and `og:image` lines near the top of `index.html`.
 - Edits: change a file on GitHub and Cloudflare redeploys in about a minute.
 - Counter, map and wall refresh every 30 seconds.
 - Collecting emails from signers worldwide (including the EU) means you should publish a short privacy notice and name who is responsible for the data before launch.

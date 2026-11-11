@@ -16,7 +16,7 @@ export async function onRequestGet({ env }) {
     total: total.results[0]?.n || 0,
     countries: Object.fromEntries(countries.results.map(r => [r.country, r.n])),
     roles: Object.fromEntries(roles.results.map(r => [r.role, r.n])),
-    recent: recent.results.map(r => ({ ...r, ts: Date.parse(r.ts + "Z") || 0 })),
+    recent: recent.results.map(r => ({ ...r, ts: Date.parse(String(r.ts).replace(" ", "T") + "Z") || 0 })),
   };
 
   return new Response(JSON.stringify(body), {
