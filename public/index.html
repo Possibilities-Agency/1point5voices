@@ -9,7 +9,7 @@
 <style>
   :root{
     --ink:#0b1b2b; --ocean:#1d4d74; --deep:#163a5c; --heat:#ff5a36; --heat2:#ffb03a;
-    --sand:#f6efe4; --paper:#fffaf2; --muted:#5d6b78; --line:#e6dccb; --reef:#1fb59a;
+    --sand:#f6efe4; --label:#8be3d0; --paper:#fffaf2; --muted:#5d6b78; --line:#e6dccb; --reef:#1fb59a;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -25,16 +25,30 @@
   /* hero */
   .hero{background:radial-gradient(1200px 600px at 85% -10%,rgba(255,90,54,.45),transparent 60%),radial-gradient(900px 500px at -10% 110%,rgba(31,181,154,.25),transparent 60%),var(--deep);color:#fff;padding:72px 0 0;overflow:hidden}
   .hero-grid{display:grid;grid-template-columns:1.25fr .9fr;gap:48px;align-items:start}
-  .kicker{text-transform:uppercase;letter-spacing:.18em;font-size:12px;font-weight:700;color:var(--heat2)}
+  .kicker{text-transform:uppercase;letter-spacing:.14em;font-size:15px;font-weight:700;color:var(--label)}
   h1{font-family:Anton,sans-serif;font-weight:400;font-size:clamp(52px,8vw,108px);line-height:.92;margin:14px 0 22px;letter-spacing:.005em}
   h1 .hot{background:linear-gradient(90deg,var(--heat2),var(--heat));-webkit-background-clip:text;background-clip:text;color:transparent}
   .lede{font-size:19px;max-width:600px;color:#d6e2ec}
   .quote{margin:34px 0 0;padding:22px 0 0;border-top:1px solid rgba(255,255,255,.15);font-family:Fraunces,serif;font-style:italic;font-size:22px;line-height:1.4;color:#fff;max-width:620px}
   .quote cite{display:block;margin-top:10px;font-family:Inter,sans-serif;font-style:normal;font-size:13px;color:#9fb3c4;letter-spacing:.02em}
   /* sign card */
+  .sub-methane{font-size:21px;line-height:1.4;color:#e8f0f6;margin:-6px 0 26px;max-width:620px;padding-left:16px;border-left:4px solid var(--label)}
+  .sub-methane b{color:#fff}
+  .leader{display:flex;gap:22px;align-items:center;margin:4px 0 28px;max-width:640px}
+  .leader img{width:196px;height:196px;object-fit:cover;object-position:50% 20%;border-radius:20px;flex:none;box-shadow:0 18px 40px rgba(0,0,0,.35);border:3px solid rgba(255,255,255,.9)}
+  .leader-k{text-transform:uppercase;letter-spacing:.16em;font-size:13px;font-weight:700;color:var(--label)}
+  .leader blockquote{margin:8px 0 10px;font-family:Fraunces,serif;font-style:italic;font-size:22px;line-height:1.3;color:#fff}
+  .leader-who{font-size:13px;color:#b9cad8;line-height:1.45}
+  .leader-who b{display:block;color:#fff;font-size:14px}
+  @media (max-width:560px){.leader{flex-direction:column;align-items:flex-start}.leader img{width:132px;height:132px}}
   .card{background:var(--paper);color:var(--ink);border-radius:18px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.35);position:relative}
   .count{font-family:Anton,sans-serif;font-size:56px;line-height:1;letter-spacing:.01em}
   .count small{font-family:Inter;font-size:14px;color:var(--muted);font-weight:500;display:block;margin-top:6px;letter-spacing:0}
+  .earlymsg{display:none}
+  body.early .earlymsg{display:block}
+  .early-h{font-family:Anton,sans-serif;font-size:38px;line-height:1.02}
+  .early-s{font-size:13px;color:var(--muted);margin-top:8px}
+  body.early #count,body.early .meter,body.early .meter-l,body.early .role b,body.early .top li .k,body.early .top-foot{display:none}
   .meter{height:10px;background:#eee3d2;border-radius:99px;margin:16px 0 6px;overflow:hidden}
   .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--heat2),var(--heat));border-radius:99px;transition:width 1s ease;min-width:6px}
   .meter-l{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
@@ -109,6 +123,33 @@
   .final a.big{display:inline-block;background:var(--heat);color:#fff;text-decoration:none;font-weight:700;font-size:18px;padding:18px 34px;border-radius:999px}
   footer{background:var(--deep);color:#b3c6d6;font-size:13px;padding:34px 0}
   footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  [hidden]{display:none!important}
+  .rec{margin-top:22px;text-align:left;border-top:1px solid var(--line);padding-top:20px}
+  .rec-h{font-family:Anton,sans-serif;font-size:24px;line-height:1.1}
+  .rec-p{color:var(--muted);font-size:14px;margin:6px 0 14px}
+  .rec-choose,.rec-actions{display:flex;flex-wrap:wrap;gap:10px}
+  .rbtn{font:inherit;font-weight:700;font-size:14px;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:11px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .rbtn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+  .rbtn.stop{background:var(--heat);margin-left:auto}
+  .rbtn:disabled{opacity:.5;cursor:default}
+  .rec-live video,.rec-review video{width:100%;border-radius:12px;background:#000;max-height:320px;display:block}
+  .rec-review audio{width:100%}
+  .rec-bar{display:flex;align-items:center;gap:10px;margin-top:10px;font-variant-numeric:tabular-nums;font-weight:600}
+  .rec-max{color:var(--muted);font-weight:400;font-size:13px}
+  .dotrec{width:10px;height:10px;border-radius:50%;background:#e8401c;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .rec-review{display:grid;gap:10px}
+  .rec-msg{font-size:14px;margin-top:10px;color:var(--ink)}
+  .rec-msg.err{color:#a3300f}
+  .rec-fine{font-size:12px;color:var(--muted);margin:10px 0 0}
+  .rec.audio-only #recLive{display:none}
+  .clips{margin-top:40px}
+  .clips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
+  .clip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px}
+  .clip video{width:100%;border-radius:10px;background:#000;aspect-ratio:4/3;object-fit:cover;display:block}
+  .clip audio{width:100%;margin-top:6px}
+  .clip .nm{font-weight:700;margin-top:10px}
+  .clip .meta{font-size:12px;color:#9fb3c4}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;transition:transform .3s;z-index:50}
   .toast.show{transform:translateX(-50%) translateY(0)}
 
@@ -152,7 +193,7 @@
   .banner .ph-tag{position:absolute;top:18px;left:18px;z-index:2;font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;background:rgba(0,0,0,.3);color:#fff;padding:5px 9px;border-radius:99px}
   .banner figcaption{position:relative;z-index:2;padding-bottom:40px;padding-top:40px;display:flex;flex-direction:column;gap:8px}
   .banner .credit{position:absolute;right:16px;bottom:12px;z-index:2;font-size:11px;color:rgba(255,255,255,.7)}
-  .banner .b-k{text-transform:uppercase;letter-spacing:.18em;font-size:12px;font-weight:700;color:var(--heat2)}
+  .banner .b-k{text-transform:uppercase;letter-spacing:.16em;font-size:13px;font-weight:700;color:var(--label)}
   .banner .b-l{font-family:Anton,sans-serif;font-size:clamp(40px,6vw,72px);line-height:1}
   .banner .b-s{font-size:18px;max-width:620px;color:#e3ecf3}
   .banner .b-l,.banner .b-s,.banner .b-k{text-shadow:0 2px 18px rgba(0,0,0,.45)}
@@ -169,10 +210,16 @@
   .bn4 .h1{background-image:url('img/beryl-carriacou.jpg')}
   .bn4 .h2{background-image:url('img/beryl-bridgetown-fisheries.jpg');background-position:center 40%}
   .bn4 .loc{position:absolute;top:16px;left:16px;z-index:3;font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;background:rgba(0,0,0,.35);color:#fff;padding:5px 9px;border-radius:99px}
-  @media (max-width:700px){.bn4 .split{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+  @media (max-width:700px){
+    .bn4{display:block;min-height:0;background:var(--deep)}
+    .bn4::after{display:none}
+    .bn4 .split{position:relative;inset:auto;grid-template-columns:1fr;grid-template-rows:240px 240px}
+    .bn4 figcaption{padding-top:28px;padding-bottom:32px}
+  }
   .face figcaption{margin-top:10px;font-size:15px;color:#d5e2ec}
   .face figcaption b{color:#fff;display:block}
   @media (max-width:900px){.map-grid{grid-template-columns:1fr}.faces{grid-template-columns:1fr 1fr}}
+  @media (max-width:560px){.logo{font-size:16px;white-space:nowrap}.bar a.cta{padding:8px 14px;font-size:13px;white-space:nowrap}}
   @media (max-width:900px){
     .hero-grid,.stats,.asks,.pillars{grid-template-columns:1fr}
     .hero{padding-top:44px}
@@ -196,15 +243,22 @@
     <div>
       <div class="kicker">A global movement · One shared future</div>
       <h1>1.5 billion voices<br>for <span class="hot">1.5 degrees.</span></h1>
-      <p class="lede">At COP31, Mia Amor Mottley, Prime Minister of Barbados and Chair of the Climate Vulnerable Forum and V20, challenged the world: the climate crisis is too important to leave only to those at the negotiating table. Not everyone has a seat at that table. Everyone has a stake in what happens next.</p>
-      <p class="lede" style="margin-top:14px">Our goal is to bring together 1.5 billion voices before COP32 to demand stronger climate action. By adding your name, you join a global call for governments to cut emissions faster, for financial institutions to make climate solutions affordable, and for leaders to demonstrate what they have delivered.</p>
+      <p class="sub-methane"><b>Methane is the fastest brake we have.</b> Let us commit to reducing methane emissions to near zero.</p>
+      <div class="leader">
+        <img src="img/pm-mottley-portrait.jpg" alt="Prime Minister Mia Amor Mottley speaking at a UN climate conference" width="800" height="774">
+        <div class="leader-txt">
+          <div class="leader-k">Leading the call</div>
+          <blockquote>“You may not have a vote in this hall, but you have a voice.”</blockquote>
+          <div class="leader-who"><b>Hon. Mia Amor Mottley</b>Prime Minister of Barbados<br>Chair, Climate Vulnerable Forum and V20</div>
+        </div>
+      </div>
+      <p class="lede">At COP31, Mia Amor Mottley, Prime Minister of Barbados and Chair of the Climate Vulnerable Forum and V20, challenged the world to recognise that the climate crisis is too important to be left only to those at the negotiating table. Not everyone has a seat at that table, but everyone has a stake in what happens next.</p>
+      <p class="lede" style="margin-top:14px">Our goal is to bring together 1.5 billion voices before COP32, united in the call to keep the 1.5°C goal alive and demand stronger climate action. By joining, you will add your voice to a global call for governments to cut emissions faster, for financial institutions to make climate solutions affordable, and for leaders to demonstrate what they have delivered.</p>
       <p class="lede" style="margin-top:14px">Together, we will use this public support to press for concrete commitments and measurable progress before, during and beyond COP32. Every voice strengthens the demand. Every commitment must lead to action.</p>
-      <blockquote class="quote">“You may not have a vote in this hall, but you have a voice.”
-        <cite>Hon. Mia Amor Mottley, Prime Minister of Barbados and Chair of the Climate Vulnerable Forum and V20 (CVF-V20) · COP31, Antalya</cite>
-      </blockquote>
     </div>
 
     <div class="card" id="sign">
+      <div class="earlymsg"><div class="early-h">Be among the first to add your voice.</div><div class="early-s">Goal: 1.5 billion voices before COP32</div></div>
       <div class="count" id="count">0<small>voices so far, and counting</small></div>
       <div class="meter"><i id="meter"></i></div>
       <div class="meter-l"><span id="pct">Every voice counts</span><span>Goal: 1,500,000,000</span></div>
@@ -233,7 +287,7 @@
         </div>
         <label>What future are you speaking up for? <span style="font-weight:400;color:var(--muted)">(optional)</span>
           <textarea id="msg" maxlength="200" placeholder="My children. My island. The reef I learned to swim on…"></textarea></label>
-        <label class="check"><input type="checkbox" id="public" checked> Show my first name, country and message on the public wall.</label>
+        <label class="check"><input type="checkbox" id="public"> Show my first name, country and message on the public wall.</label>
         <label class="check"><input type="checkbox" id="updates"> Keep me updated on the movement. Your email is never shown publicly.</label>
         <div id="turnstile"></div>
         <div class="status" id="status"></div>
@@ -246,6 +300,27 @@
         <h3>Your voice is counted.</h3>
         <p>Now turn it into action. Invite two people to join, then take the next steps below.</p>
         <button class="btn-ghost" id="shareBtn" type="button">Copy the link to share</button>
+        <div class="rec" id="rec">
+          <div class="rec-h">Say it in your own voice</div>
+          <p class="rec-p">Add a short voice note (up to 60 seconds) or video (up to 30 seconds) telling the world why 1.5°C matters to you. It's optional.</p>
+          <div class="rec-choose" id="recChoose">
+            <button type="button" class="rbtn" id="recAudio">🎙 Record voice</button>
+            <button type="button" class="rbtn" id="recVideo">🎥 Record video</button>
+            <label class="rbtn ghost">Upload a file<input type="file" id="recFile" accept="audio/*,video/*" hidden></label>
+          </div>
+          <div class="rec-live" id="recLiveWrap" hidden>
+            <video id="recLive" muted playsinline></video>
+            <div class="rec-bar"><span class="dotrec"></span><span id="recTime">0:00</span><span class="rec-max" id="recMax"></span><button type="button" class="rbtn stop" id="recStop">Stop</button></div>
+          </div>
+          <div class="rec-review" id="recReview" hidden>
+            <div id="recPlayWrap"></div>
+            <label class="check"><input type="checkbox" id="cUse"> I agree that this recording can be shown on this website and used in campaign materials, including at COP32.</label>
+            <label class="check"><input type="checkbox" id="cAge"> I am 18 or over, or a parent or guardian has agreed. Anyone else who appears or is heard has also agreed.</label>
+            <div class="rec-actions"><button type="button" class="rbtn" id="recSend">Send my pledge</button><button type="button" class="rbtn ghost" id="recRedo">Start again</button></div>
+          </div>
+          <div class="rec-msg" id="recMsg"></div>
+          <p class="rec-fine">Recordings are reviewed before they appear publicly. See our <a href="privacy.html">privacy notice</a>.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -287,7 +362,7 @@
 </section>
 
 <figure class="banner bn3" role="img" aria-label="Prime Minister Mia Amor Mottley speaking at COP26 in Glasgow, 2021">
-  <figcaption class="wrap"><span class="b-k">The Climate Vulnerable Forum and V20</span><span class="b-l">74 countries. 1.8 billion people. One voice.</span><span class="b-s">The nations that feel climate change first and hardest, calling the world to act.</span></figcaption>
+  <figcaption class="wrap"><span class="b-k">The Climate Vulnerable Forum and V20</span><span class="b-l">77 countries. 1.9 billion people. One voice.</span><span class="b-s">The nations that feel climate change first and hardest, calling the world to act.</span></figcaption>
   <span class="credit">Prime Minister Mottley at COP26, Glasgow, 2021</span>
 </figure>
 
@@ -328,10 +403,10 @@
 
 <section class="who">
   <div class="wrap">
-    <div class="sec-k" style="color:var(--heat2)">The world is answering</div>
+    <div class="sec-k" style="color:var(--label)">The world is answering</div>
     <h2>One world. Billions of reasons to act.</h2>
     <p class="who-copy" style="margin-bottom:0">Every voice carries a story. From small islands to major cities. From young people to grandparents. From farmers and scientists to artists, athletes and entrepreneurs. See the voices. Add yours.</p>
-    <div id="map" class="mapin"><div class="sec-k" style="color:var(--heat2)">Where the voices are coming from</div>
+    <div id="map" class="mapin"><div class="sec-k" style="color:var(--label)">Where the voices are coming from</div>
     <div class="map-grid">
       <div class="map-card">
         <div class="map-wrap" id="mapWrap"><svg id="worldMap" role="img" aria-label="World map shaded by number of voices per country"></svg><div class="tip" id="tip"></div></div>
@@ -344,6 +419,7 @@
       </div>
     </div></div>
     <div class="faces"><figure class="face g1"><div class="ph"><svg viewBox="0 0 100 120" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M12 120c0-26 17-42 38-42s38 16 38 42z"/></svg></div><figcaption><b>A young person</b> imagining their future</figcaption></figure><figure class="face g2"><div class="ph"><svg viewBox="0 0 100 120" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M12 120c0-26 17-42 38-42s38 16 38 42z"/></svg></div><figcaption><b>A farmer</b> protecting their livelihood</figcaption></figure><figure class="face g3"><div class="ph"><svg viewBox="0 0 100 120" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M12 120c0-26 17-42 38-42s38 16 38 42z"/></svg></div><figcaption><b>An island community</b> fighting for its home</figcaption></figure><figure class="face g4"><div class="ph"><svg viewBox="0 0 100 120" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M12 120c0-26 17-42 38-42s38 16 38 42z"/></svg></div><figcaption><b>A parent</b> determined to leave something better behind</figcaption></figure></div>
+    <div class="clips" id="clips" hidden><div class="sec-k" style="color:var(--label)">Hear the voices</div><div class="clips-grid" id="clipsGrid"></div></div>
     <div class="roles" id="roles"></div>
     <div class="wall" id="wall"><p class="empty">The wall fills as people sign. Yours could be the first message here.</p></div>
   </div>
@@ -362,18 +438,19 @@
   <span>1.5 billion voices. 1.5 degrees. One future worth fighting for.</span>
   <span>Privacy: only your first name, country and message (if you choose) are shown. Your email is used to confirm your signature and, if you opt in, to send updates. It is never shown or shared.</span>
 
-  <span class="foot-priv">Operated by The Possibilities Agency on behalf of the Government of Barbados · <a href="privacy.html">Privacy notice</a></span>
+  <span class="foot-priv">A Government of Barbados initiative · <a href="privacy.html">Privacy notice</a></span>
 </div></footer>
 
 <div class="toast" id="toast"></div>
 
 <script>
 (function(){
-  const COUNTRIES = ["Barbados","Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Côte d'Ivoire","Croatia","Cuba","Cyprus","Czechia","DR Congo","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","São Tomé and Príncipe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Türkiye","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe","Other"];
+  const COUNTRIES = ["Barbados", "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Côte d'Ivoire", "Croatia", "Cuba", "Cyprus", "Czechia", "DR Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "São Tomé and Príncipe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Türkiye", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Anguilla", "Aruba", "Bermuda", "Bonaire, Sint Eustatius and Saba", "British Virgin Islands", "Cayman Islands", "Curaçao", "French Guiana", "Guadeloupe", "Martinique", "Montserrat", "Puerto Rico", "Saint Barthélemy", "Saint Martin (French part)", "Sint Maarten (Dutch part)", "Turks and Caicos Islands", "United States Virgin Islands", "American Samoa", "Cook Islands", "French Polynesia", "Guam", "New Caledonia", "Niue", "Northern Mariana Islands", "Pitcairn Islands", "Tokelau", "Wallis and Futuna", "Réunion", "Mayotte", "Saint Helena", "Falkland Islands (Malvinas)", "Saint Pierre and Miquelon", "Greenland", "Faroe Islands", "Gibraltar", "Isle of Man", "Jersey", "Guernsey", "Other"];
   const GOAL = 1500000000;
   const $ = id => document.getElementById(id);
   const sel = $("country");
-  sel.innerHTML = '<option value="">Choose…</option>' + COUNTRIES.map(c=>`<option>${c}</option>`).join("");
+  const ALPHA = COUNTRIES.filter(c=>c!=="Other").sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = '<option value="">Choose…</option><option>Barbados</option><option disabled>──────────</option>' + ALPHA.map(c=>`<option>${c}</option>`).join("") + '<option>Other</option>';
 
   let sigs = [];        // {first, country, role, msg, public, ts}
   let db = null, myId = null, demo = false;
@@ -392,7 +469,9 @@
   }
 
   function render(){
+    const EARLY_UNTIL = 100; // show "Be among the first" until this many voices
     const n = stats.total;
+    document.body.classList.toggle("early", n < EARLY_UNTIL);
     animateCount(n);
     const pct = n/GOAL*100;
     $("meter").style.width = Math.max(pct,0.4)+"%";
@@ -414,15 +493,15 @@
     const cc = Object.assign({}, stats.countries); delete cc.Other;
     renderMap(cc);
     $("roles").innerHTML = roles.length
-      ? roles.map(([r,c])=>`<div class="role"><b>${c.toLocaleString()}</b>${esc(r)}${c===1?"":"s"}</div>`).join("")
+      ? roles.map(([r,c])=>`<div class="role"><b>${c.toLocaleString()}</b>${esc(r)}${(c===1 && n>=EARLY_UNTIL)?"":"s"}</div>`).join("")
       : ["Citizens","Young people","Parents","Farmers","Scientists","Artists","Athletes","Entrepreneurs"].map(r=>`<div class="role"><b>0</b>${r}</div>`).join("");
   }
 
 
   // ---------- world heat map ----------
-  const ALIAS = {"Antigua and Barbuda":"Antigua and Barb.","Bosnia and Herzegovina":"Bosnia and Herz.","Central African Republic":"Central African Rep.","DR Congo":"Dem. Rep. Congo","Dominican Republic":"Dominican Rep.","Equatorial Guinea":"Eq. Guinea","Eswatini":"eSwatini","Marshall Islands":"Marshall Is.","North Macedonia":"Macedonia","Saint Kitts and Nevis":"St. Kitts and Nevis","Saint Vincent and the Grenadines":"St. Vin. and Gren.","São Tomé and Príncipe":"São Tomé and Principe","Solomon Islands":"Solomon Is.","South Sudan":"S. Sudan","Türkiye":"Turkey","United States":"United States of America","Vatican City":"Vatican"};
+  const ALIAS = {"Antigua and Barbuda": "Antigua and Barb.", "Bosnia and Herzegovina": "Bosnia and Herz.", "Central African Republic": "Central African Rep.", "DR Congo": "Dem. Rep. Congo", "Dominican Republic": "Dominican Rep.", "Equatorial Guinea": "Eq. Guinea", "Eswatini": "eSwatini", "Marshall Islands": "Marshall Is.", "North Macedonia": "Macedonia", "Saint Kitts and Nevis": "St. Kitts and Nevis", "Saint Vincent and the Grenadines": "St. Vin. and Gren.", "São Tomé and Príncipe": "São Tomé and Principe", "Solomon Islands": "Solomon Is.", "South Sudan": "S. Sudan", "Türkiye": "Turkey", "United States": "United States of America", "Vatican City": "Vatican", "British Virgin Islands": "British Virgin Is.", "Cayman Islands": "Cayman Is.", "Saint Barthélemy": "St-Barthélemy", "Saint Martin (French part)": "St-Martin", "Sint Maarten (Dutch part)": "Sint Maarten", "Turks and Caicos Islands": "Turks and Caicos Is.", "United States Virgin Islands": "U.S. Virgin Is.", "Cook Islands": "Cook Is.", "French Polynesia": "Fr. Polynesia", "Northern Mariana Islands": "N. Mariana Is.", "Pitcairn Islands": "Pitcairn Is.", "Wallis and Futuna": "Wallis and Futuna Is.", "Falkland Islands (Malvinas)": "Falkland Is.", "Saint Pierre and Miquelon": "St. Pierre and Miquelon", "Faroe Islands": "Faeroe Is."};
   const REV = Object.fromEntries(Object.entries(ALIAS).map(([a,b])=>[b,a]));
-  const EXTRA_PTS = {"Tuvalu":[179.2,-8.5]};
+  const EXTRA_PTS = {"Tuvalu": [179.2, -8.5], "Bonaire, Sint Eustatius and Saba": [-68.26, 12.18], "French Guiana": [-53.1, 3.95], "Guadeloupe": [-61.55, 16.25], "Martinique": [-61.02, 14.64], "Tokelau": [-171.85, -9.2], "Réunion": [55.53, -21.12], "Mayotte": [45.15, -12.82], "Gibraltar": [-5.35, 36.14]};
   let mapReady = false, mapSel = null, bubbleG = null, proj = null, path = null, features = [];
   function initMap(){
     if(!window.d3 || !window.topojson){ return; }
@@ -461,8 +540,9 @@
     const pts = [];
     features.forEach(f=>{ const n = counts[f.label]; if(n && f.area < 40 && isFinite(f.c[0])) pts.push({name:f.label,n,x:f.c[0],y:f.c[1]}); });
     Object.entries(EXTRA_PTS).forEach(([nm,ll])=>{ const n = counts[nm]; if(n){ const p = proj(ll); pts.push({name:nm,n,x:p[0],y:p[1]}); }});
-    const r = d3.scaleSqrt([1, Math.max(2,max)], [5, 14]);
-    bubbleG.selectAll("circle").data(pts, d=>d.name).join("circle").attr("class","b")
+    pts.sort((a,b)=>b.n-a.n); // big first, so small islands sit on top
+    const r = d3.scaleSqrt([1, Math.max(2,max)], [5, 12]);
+    bubbleG.selectAll("circle").data(pts, d=>d.name).join("circle").order().attr("class","b")
       .attr("cx",d=>d.x).attr("cy",d=>d.y).attr("r",d=>r(d.n)).attr("fill",d=>color(d.n));
   }
 
@@ -495,7 +575,7 @@
       applyStats();
     }catch(e){ /* keep last good numbers */ }
   }
-  try{ if(localStorage.getItem("signed15")) setSigned(); }catch(e){}
+  try{ if(localStorage.getItem("signed15")){ setSigned(); } }catch(e){}
 
   $("form").addEventListener("submit", async e=>{
     e.preventDefault();
@@ -511,15 +591,124 @@
         body: JSON.stringify({ first, email, country, role: $("role").value, msg: $("msg").value.trim(),
           public: $("public").checked, updates: $("updates").checked, token: turnstileToken }) });
       const j = await r.json().catch(()=>({}));
-      if(r.status === 409){ setSigned(); toast("You've already added your voice. Thank you!"); }
+      if(r.status === 409){ setRecAvailable(!!uploadToken); setSigned(); toast("You've already added your voice. Thank you!"); }
       else if(!r.ok){ throw new Error(j.error || "failed"); }
-      else { setSigned(); try{ localStorage.setItem("signed15","1"); }catch(e){} loadStats(); }
+      else { uploadToken = j.token || ""; try{ localStorage.setItem("signed15","1"); if(uploadToken) localStorage.setItem("pledgeToken", uploadToken); }catch(e){} setRecAvailable(!!uploadToken); setSigned(); loadStats(); }
     }catch(err){
       status("We couldn't save your signature just now. Please try again.");
     }finally{
       btn.disabled = false; btn.textContent = "Count me in";
     }
   });
+
+  const PREVIEW = false;
+  // ---------- voice / video pledges ----------
+  const MAXB = 25 * 1024 * 1024;
+  let uploadToken = "";
+  try { uploadToken = localStorage.getItem("pledgeToken") || ""; } catch(e){}
+  let mediaStream = null, recorder = null, chunks = [], recBlob = null, recTimer = null, recKind = "";
+  const recMsg = (t, err) => { const m = $("recMsg"); m.textContent = t || ""; m.className = "rec-msg" + (err ? " err" : ""); };
+  function recShow(stage){
+    $("recChoose").hidden = stage !== "choose";
+    $("recLiveWrap").hidden = stage !== "live";
+    $("recReview").hidden = stage !== "review";
+  }
+  function pickMime(kind){
+    const c = kind === "video"
+      ? ["video/mp4;codecs=avc1,mp4a","video/webm;codecs=vp8,opus","video/webm","video/mp4"]
+      : ["audio/webm;codecs=opus","audio/mp4","audio/webm","audio/ogg"];
+    if (!window.MediaRecorder) return "";
+    return c.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  }
+  function stopStream(){ if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; } }
+  async function startRec(kind){
+    recMsg("");
+    recKind = kind;
+    const mime = pickMime(kind);
+    if (!navigator.mediaDevices || !window.MediaRecorder) { recMsg("Recording isn't available in this browser. You can upload a file instead.", true); return; }
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia(kind === "video"
+        ? { audio: true, video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } }
+        : { audio: true });
+    } catch (e) { recMsg("We couldn't reach your " + (kind === "video" ? "camera" : "microphone") + ". Check your browser permissions, or upload a file instead.", true); return; }
+    $("rec").classList.toggle("audio-only", kind === "audio");
+    const live = $("recLive");
+    if (kind === "video") { live.srcObject = mediaStream; live.play().catch(()=>{}); }
+    chunks = [];
+    try {
+      recorder = new MediaRecorder(mediaStream, mime ? { mimeType: mime, videoBitsPerSecond: 900000, audioBitsPerSecond: 96000 } : undefined);
+    } catch (e) { stopStream(); recMsg("Recording isn't available in this browser. You can upload a file instead.", true); return; }
+    recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      clearInterval(recTimer); stopStream(); live.srcObject = null;
+      const type = (recorder.mimeType || mime || (kind === "video" ? "video/webm" : "audio/webm")).split(";")[0];
+      recBlob = new Blob(chunks, { type });
+      showReview();
+    };
+    const limit = kind === "video" ? 30 : 60;
+    $("recMax").textContent = "of " + (kind === "video" ? "0:30" : "1:00");
+    const t0 = Date.now();
+    $("recTime").textContent = "0:00";
+    recTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - t0) / 1000);
+      $("recTime").textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+      if (s >= limit && recorder.state === "recording") recorder.stop();
+    }, 250);
+    recorder.start(1000);
+    recShow("live");
+  }
+  function showReview(){
+    if (!recBlob) return;
+    if (recBlob.size > MAXB) { recMsg("That file is too large. Please keep it under 25 MB.", true); recBlob = null; recShow("choose"); return; }
+    const url = URL.createObjectURL(recBlob);
+    const isVideo = recBlob.type.startsWith("video/");
+    $("recPlayWrap").innerHTML = isVideo ? `<video controls playsinline src="${url}"></video>` : `<audio controls src="${url}"></audio>`;
+    $("cUse").checked = false; $("cAge").checked = false;
+    recShow("review");
+  }
+  ["cUse","cAge"].forEach(id => $(id).addEventListener("change", () => recMsg("")));
+  $("recAudio").addEventListener("click", () => startRec("audio"));
+  $("recVideo").addEventListener("click", () => startRec("video"));
+  $("recStop").addEventListener("click", () => { if (recorder && recorder.state === "recording") recorder.stop(); });
+  $("recRedo").addEventListener("click", () => { recBlob = null; $("recPlayWrap").innerHTML = ""; recMsg(""); recShow("choose"); });
+  $("recFile").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    if (!/^(audio|video)\//.test(f.type)) { recMsg("Please choose an audio or video file.", true); return; }
+    recBlob = f; recMsg(""); showReview();
+  });
+  $("recSend").addEventListener("click", async () => {
+    if (!recBlob) return;
+    if (!$("cUse").checked || !$("cAge").checked) { recMsg("Please tick both boxes to send your pledge.", true); return; }
+    if (PREVIEW) { recMsg("Preview only: recordings will upload once the site is live on Cloudflare."); return; }
+    if (!uploadToken) { recMsg("Sorry, this pledge can no longer be uploaded from this browser.", true); return; }
+    const btn = $("recSend"); btn.disabled = true; btn.textContent = "Sending…";
+    try {
+      const r = await fetch("/api/media?token=" + encodeURIComponent(uploadToken), {
+        method: "POST", headers: { "content-type": recBlob.type.split(";")[0] }, body: recBlob });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Upload failed");
+      uploadToken = ""; try { localStorage.removeItem("pledgeToken"); } catch(e){}
+      $("recPlayWrap").innerHTML = ""; recShow("none");
+      recMsg("Thank you. Your pledge will appear on the site once it has been reviewed.");
+    } catch (e) {
+      recMsg(e.message === "Upload failed" ? "We couldn't upload that just now. Please try again." : e.message, true);
+    } finally { btn.disabled = false; btn.textContent = "Send my pledge"; }
+  });
+  function setRecAvailable(on){ $("rec").hidden = !on; }
+  async function loadClips(){
+    if (PREVIEW) return;
+    try {
+      const r = await fetch("/api/media", { cache: "no-store" });
+      if (!r.ok) return;
+      const { items } = await r.json();
+      if (!items || !items.length) return;
+      $("clipsGrid").innerHTML = items.map(c => `<div class="clip">${c.kind === "video"
+        ? `<video controls playsinline preload="metadata" src="/api/media/${c.id}"></video>`
+        : `<audio controls preload="none" src="/api/media/${c.id}"></audio>`}<div class="nm">${esc(c.first)}</div><div class="meta">${esc(c.country)} · ${esc(c.role || "Citizen")}</div></div>`).join("");
+      $("clips").hidden = false;
+    } catch(e){}
+  }
 
   document.querySelectorAll("[data-t]").forEach(b=>b.addEventListener("click",()=>{
     $(b.dataset.t).classList.toggle("show");
@@ -537,7 +726,9 @@
 
   initMap();
   render();
+  setRecAvailable(!!uploadToken);
   loadStats();
+  loadClips();
   setInterval(loadStats, 30000);
 })();
 </script>

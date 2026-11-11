@@ -35,13 +35,15 @@ export async function onRequestPost({ request, env }) {
     if (!v.success) return json({ error: "Verification failed" }, 403);
   }
 
+  const token = crypto.randomUUID();
   try {
     await env.DB.prepare(
-      "INSERT INTO signatures (first_name, email, country, role, message, is_public, updates) VALUES (?,?,?,?,?,?,?)"
-    ).bind(first, email, country, role, msg || null, b.public ? 1 : 0, b.updates ? 1 : 0).run();
+      "INSERT INTO signatures (first_name, email, country, role, message, is_public, updates, upload_token) VALUES (?,?,?,?,?,?,?,?)"
+    ).bind(first, email, country, role, msg || null, b.public ? 1 : 0, b.updates ? 1 : 0, token).run();
   } catch (e) {
     if (String(e).includes("UNIQUE")) return json({ error: "Already signed" }, 409);
     return json({ error: "Could not save" }, 500);
   }
-  return json({ ok: true });
+  // token lets this signer add one voice or video pledge
+  return json({ ok: true, token });
 }
