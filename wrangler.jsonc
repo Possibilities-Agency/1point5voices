@@ -2,8 +2,6 @@
   "name": "1point5voices",
   "pages_build_output_dir": "./public",
   "compatibility_date": "2026-11-01",
-  {
-  // ...
   "d1_databases": [
     {
       "binding": "DB",
@@ -15,7 +13,6 @@
       "binding": "MEDIA",
       "bucket_name": "voices-media"
     }
-  ],
+  ]
   // ...
-}
 }
