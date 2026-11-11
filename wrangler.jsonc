@@ -1,6 +1,6 @@
 {
   "name": "1point5voices",
-  "main": "src/worker.js",
+  "main": "index.js",
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./public",
