@@ -16,7 +16,7 @@
       "bucket_name": "voices-media"
     }
   ],
-"observability": {
-    "enabled": false
+  "observability": {
+    "enabled": true
   }
 }
