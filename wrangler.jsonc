@@ -1,0 +1,17 @@
+{
+  "name": "1point5voices",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "voices",
+      "database_id": "e6aaf3f0-cc5c-48d2-b735-63b84a195738"
+    }
+  ]
+}
