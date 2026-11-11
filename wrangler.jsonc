@@ -2,11 +2,20 @@
   "name": "1point5voices",
   "pages_build_output_dir": "./public",
   "compatibility_date": "2026-11-01",
+  {
+  // ...
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "voices",
       "database_id": "e6aaf3f0-cc5c-48d2-b735-63b84a195738"
     }
-  ]
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "voices-media"
+    }
+  ],
+  // ...
+}
 }
