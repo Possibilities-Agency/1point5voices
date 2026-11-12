@@ -1,6 +1,5 @@
 // functions/admin/_middleware.js
 
-// This middleware restricts access to the /admin route to users in your Google Workspace.
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -11,18 +10,24 @@ export async function onRequest(context) {
   }
 
   const cookieHeader = request.headers.get("Cookie") || "";
-  if (!cookieHeader.includes("admin_session=")) {
-    // Redirect to Google OAuth
-    const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${env.GOOGLE_CLIENT_ID}` +
-      `&redirect_uri=${encodeURIComponent(url.origin + "/admin/callback")}` +
-      `&response_type=code` +
-      `&scope=email%20profile` +
-      `&hd=possibilities.agency`; // Restricts login to your Workspace domain
-
-    return Response.redirect(redirectUrl, 302);
+  
+  // If the user has a session, allow them to access the dashboard
+  if (cookieHeader.includes("admin_session=")) {
+    return context.next();
   }
 
-  // Session exists, allow access
-  return context.next();
+  // If the request is for the moderation API but they don't have a session, block it
+  if (url.pathname.startsWith('/api/admin/')) {
+     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+  }
+
+  // Otherwise, redirect unauthorized users to Google OAuth
+  const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${env.GOOGLE_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(url.origin + "/admin/callback")}` +
+    `&response_type=code` +
+    `&scope=email%20profile` +
+    `&hd=possibilities.agency`; 
+
+  return Response.redirect(redirectUrl, 302);
 }
