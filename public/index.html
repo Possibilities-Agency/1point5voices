@@ -596,7 +596,7 @@
 
   // ---------- data: Cloudflare Pages Functions + D1 ----------
   // Optional bot protection: paste your Cloudflare Turnstile site key here.
-  const TURNSTILE_SITE_KEY = "";
+  const TURNSTILE_SITE_KEY = "0x4AAAAAAF-br0bTAgs9nzhC";
   let turnstileToken = "";
   if (TURNSTILE_SITE_KEY) {
     window.onTurnstileLoad = () => turnstile.render("#turnstile", { sitekey: TURNSTILE_SITE_KEY, callback: t => turnstileToken = t });
