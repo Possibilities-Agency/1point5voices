@@ -1,8 +1,6 @@
 // functions/admin/index.js
 
 export async function onRequestGet(context) {
-  // The middleware has already verified the user is authenticated by this point.
-  // We extract their email from the cookie to display in the UI.
   const cookieHeader = context.request.headers.get("Cookie") || "";
   const match = cookieHeader.match(/admin_session=([^;]+)/);
   const userEmail = match ? decodeURIComponent(match[1]) : "Admin";
@@ -12,59 +10,67 @@ export async function onRequestGet(context) {
 <head>
   <meta charset="utf-8">
   <title>Admin Dashboard | 1.5 Billion Voices</title>
+  <link rel="stylesheet" href="/style.css">
   <style>
-    body { font-family: system-ui, sans-serif; background: #f6efe4; color: #0b1b2b; margin: 0; padding: 40px; }
-    .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    h1 { margin-top: 0; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e6dccb; padding-bottom: 20px; margin-bottom: 20px; }
-    .user { font-size: 14px; color: #5d6b78; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-    .tab { padding: 10px 20px; background: #e6dccb; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    .tab.active { background: #1d4d74; color: #fff; }
+    .admin-container { max-width: 1000px; margin: 60px auto; padding: 0 24px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--line); padding-bottom: 20px; margin-bottom: 30px; }
+    .admin-header h1 { margin: 0; font-size: 42px; line-height: 1; }
+    .user-badge { background: var(--sand); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); }
+    .tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+    .tab { font-family: inherit; font-size: 15px; font-weight: 600; padding: 12px 24px; background: transparent; border: 1.5px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--muted); transition: all 0.2s; }
+    .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
     .panel { display: none; }
     .panel.active { display: block; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th, td { padding: 12px; border-bottom: 1px solid #e6dccb; }
-    th { background: #f9f9f9; }
-    button.action { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    .btn-approve { background: #1fb59a; color: white; }
-    .btn-reject { background: #ff5a36; color: white; }
+    .admin-table-wrap { background: #fff; border-radius: 18px; border: 1px solid var(--line); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th, td { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+    th { background: var(--sand); font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; }
+    tr:last-child td { border-bottom: none; }
+    .btn-approve { background: var(--reef); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+    .btn-reject { background: var(--heat); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; margin-left: 8px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Dashboard</h1>
-      <div class="user">Logged in as: <b>${userEmail}</b></div>
+  <div class="bar"><div class="wrap">
+    <div class="logo"><span class="dot"></span>1.5 BILLION VOICES</div>
+  </div></div>
+
+  <div class="admin-container">
+    <div class="admin-header">
+      <h1>Admin Dashboard</h1>
+      <div class="user-badge">${userEmail}</div>
     </div>
     
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('moderation')">Media Moderation</button>
+      <button class="tab active" onclick="switchTab('moderation')">Pending Signatures</button>
       <button class="tab" onclick="switchTab('analytics')">Signatures & Export</button>
     </div>
 
     <div id="moderation" class="panel active">
-      <h2>Pending Media</h2>
-      <p>Approve voice and video pledges to display them on the public wall.</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Location</th>
-            <th>Type</th>
-            <th>Media</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="media-list">
-          <tr><td colspan="5">Loading pending media...</td></tr>
-        </tbody>
-      </table>
+      <h2 style="margin-bottom: 8px;">Pending Signatures</h2>
+      <p style="color: var(--muted); margin-bottom: 24px;">Approve signatures and media to display them on the public wall.</p>
+      
+      <div class="admin-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Location</th>
+              <th>Type</th>
+              <th>Media</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="media-list">
+            <tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">Loading pending signatures...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div id="analytics" class="panel">
-      <h2>Signature Analytics</h2>
-      <p>Data export and analytics features coming soon.</p>
+      <h2 style="margin-bottom: 8px;">Signature Analytics</h2>
+      <p style="color: var(--muted);">Data export and analytics features coming soon.</p>
     </div>
   </div>
 
@@ -75,8 +81,72 @@ export async function onRequestGet(context) {
       document.getElementById(id).classList.add('active');
       event.target.classList.add('active');
     }
-    
-    // Future API call to load the media will go here
+
+    async function loadPending() {
+      try {
+        const response = await fetch('/api/admin/moderate');
+        if (response.status === 401) {
+          window.location.reload(); // Force re-auth
+          return;
+        }
+        
+        const data = await response.json();
+        const tbody = document.getElementById('media-list');
+        
+        if (!data.pending || data.pending.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No pending signatures to review.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.pending.map(item => \`
+          <tr id="row-\${item.id}">
+            <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
+            <td>\${item.country || 'Unknown'}</td>
+            <td><span style="background: \${item.kind ? '#e6f3ff' : '#f0f0f0'}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${item.kind ? '#0066cc' : '#666'}; text-transform: uppercase;">\${item.kind || 'Text Only'}</span></td>
+            <td>
+              \${item.kind === 'video' ? \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\` : 
+                 item.kind === 'audio' ? \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\` : 
+                 item.message ? \`"\${item.message}"\` : '<span style="color: var(--muted);">No message</span>'}
+            </td>
+            <td>
+              <button class="btn-approve" onclick="moderate(\${item.id}, 'approve')">Approve</button>
+              <button class="btn-reject" onclick="moderate(\${item.id}, 'reject')">Reject</button>
+            </td>
+          </tr>
+        \`).join('');
+      } catch (e) {
+        document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items.</td></tr>';
+      }
+    }
+
+    async function moderate(id, action) {
+      const row = document.getElementById(\`row-\${id}\`);
+      row.style.opacity = '0.5';
+      
+      try {
+        const res = await fetch('/api/admin/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action })
+        });
+        
+        if (res.ok) {
+          row.remove();
+          if (document.getElementById('media-list').children.length === 0) {
+            document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No pending signatures to review.</td></tr>';
+          }
+        } else {
+          row.style.opacity = '1';
+          alert('Failed to update status.');
+        }
+      } catch (e) {
+        row.style.opacity = '1';
+        alert('An error occurred.');
+      }
+    }
+
+    // Load data on page load
+    loadPending();
   </script>
 </body>
 </html>`;
