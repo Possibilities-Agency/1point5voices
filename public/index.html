@@ -434,8 +434,19 @@
     const name = $("first").value.trim(), country = $("country").value && $("country").value !== "Other" ? $("country").value : "";
     const N = name ? esc(name) : "<b>your name</b>", C = country ? esc(country) : "<b>your country</b>";
     $("sbText").innerHTML = scriptVersion === "full"
-      ? `My name is ${N} and I'm speaking from ${C}.\nI'm adding my voice for the people I love,\nfor the place I call home,\nand for the children who'll live with what we choose today.\nWorld leaders, act now.\nCut methane. Protect lives.\nKeep one-point-five alive.\nOur future is worth fighting for.\nAnd I won't stay silent.`
-      : `I'm ${N}, from ${C}.\nFor the people I love, and the children still to come:\nCut methane. Protect lives. Keep one-point-five alive.\nI won't stay silent.`;
+      ? `My name is ${N} and I'm speaking from ${C}.
+I'm adding my voice for the people I love,
+for the place I call home,
+and for the children who'll live with what we choose today.
+World leaders, act now.
+Cut methane. Protect lives.
+Keep one-point-five alive.
+Our future is worth fighting for.
+And I won't stay silent.`
+      : `I'm ${N}, from ${C}.
+For the people I love, and the children still to come:
+Cut methane. Protect lives. Keep one-point-five alive.
+I won't stay silent.`;
   }
   document.querySelectorAll(".sbtab").forEach(b => b.addEventListener("click", () => {
     scriptVersion = b.dataset.v;
@@ -463,10 +474,15 @@
     recKind = kind;
     const mime = pickMime(kind);
     if (!navigator.mediaDevices || !window.MediaRecorder) { recMsg("Recording isn't available in this browser. You can upload a file instead.", true); return; }
+    const audioConstraints = { 
+      echoCancellation: false, 
+      noiseSuppression: false, 
+      autoGainControl: false 
+    };
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia(kind === "video"
-        ? { audio: true, video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } }
-        : { audio: true });
+        ? { audio: audioConstraints, video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } }
+        : { audio: audioConstraints });
     } catch (e) { recMsg("We couldn't reach your " + (kind === "video" ? "camera" : "microphone") + ". Check your browser permissions, or upload a file instead.", true); return; }
     $("rec").classList.toggle("audio-only", kind === "audio");
     const live = $("recLive");
