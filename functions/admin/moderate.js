@@ -6,50 +6,71 @@ export async function onRequest(context) {
   // 1. Verify Authentication
   const cookieHeader = request.headers.get("Cookie") || "";
   if (!cookieHeader.includes("admin_session=")) {
-    return new Response("Unauthorized", { status: 401 });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
   }
 
-  // 2. Handle GET: Fetch Pending Media
+  if (!env.DB) {
+    return new Response(JSON.stringify({ error: "Database binding missing" }), { status: 500, headers: { "Content-Type": "application/json" } });
+  }
+
+  // 2. Handle GET: Fetch Pending Signatures & Media
   if (request.method === "GET") {
     try {
       const { results } = await env.DB.prepare(
-        `SELECT m.id, m.kind, m.mime, s.first_name, s.country, s.role
-         FROM media m
-         JOIN signatures s ON m.signature_id = s.id
-         WHERE m.status = 'pending'
-         ORDER BY m.created_at ASC`
+        `SELECT 
+           s.id AS sig_id, 
+           s.first_name, 
+           s.country, 
+           s.role, 
+           s.message, 
+           m.id AS media_id, 
+           m.kind, 
+           s.is_public, 
+           m.status AS media_status
+         FROM signatures s
+         LEFT JOIN media m ON s.id = m.signature_id
+         WHERE s.is_public = 0 OR m.status = 'pending'
+         ORDER BY s.created_at ASC`
       ).all();
 
       return new Response(JSON.stringify({ pending: results || [] }), {
         headers: { "Content-Type": "application/json" }
       });
     } catch (error) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
 
-  // 3. Handle POST: Approve or Reject Media
+  // 3. Handle POST: Approve or Reject
   if (request.method === "POST") {
     try {
       const body = await request.json();
-      const { id, action } = body;
+      const { id, action } = body; // id here is the signature_id
 
       if (!id || !['approve', 'reject'].includes(action)) {
-        return new Response("Invalid payload", { status: 400 });
+        return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers: { "Content-Type": "application/json" } });
       }
 
-      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      if (action === 'approve') {
+        // Approve both the signature and any attached media
+        await env.DB.batch([
+          env.DB.prepare("UPDATE signatures SET is_public = 1 WHERE id = ?").bind(id),
+          env.DB.prepare("UPDATE media SET status = 'approved' WHERE signature_id = ?").bind(id)
+        ]);
+      } else {
+        // Reject by hiding the signature and marking media as rejected
+        await env.DB.batch([
+          env.DB.prepare("UPDATE signatures SET is_public = -1 WHERE id = ?").bind(id),
+          env.DB.prepare("UPDATE media SET status = 'rejected' WHERE signature_id = ?").bind(id)
+        ]);
+      }
 
-      await env.DB.prepare(
-        "UPDATE media SET status = ? WHERE id = ?"
-      ).bind(newStatus, id).run();
-
-      return new Response(JSON.stringify({ success: true, id, status: newStatus }), {
+      return new Response(JSON.stringify({ success: true, id, action }), {
         headers: { "Content-Type": "application/json" }
       });
 
     } catch (error) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
 

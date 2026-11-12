@@ -57,7 +57,7 @@ export async function onRequestGet(context) {
               <th>Name</th>
               <th>Location</th>
               <th>Type</th>
-              <th>Media</th>
+              <th>Message / Media</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -86,36 +86,52 @@ export async function onRequestGet(context) {
       try {
         const response = await fetch('/api/admin/moderate');
         if (response.status === 401) {
-          window.location.reload(); // Force re-auth
+          window.location.reload(); 
           return;
         }
         
         const data = await response.json();
         const tbody = document.getElementById('media-list');
         
+        if (data.error) {
+          tbody.innerHTML = \`<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error: \${data.error}</td></tr>\`;
+          return;
+        }
+
         if (!data.pending || data.pending.length === 0) {
           tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No pending signatures to review.</td></tr>';
           return;
         }
 
-        tbody.innerHTML = data.pending.map(item => \`
-          <tr id="row-\${item.id}">
+        tbody.innerHTML = data.pending.map(item => {
+          const typeLabel = item.kind ? item.kind : (item.message ? 'Text' : 'Signature Only');
+          const typeColor = item.kind ? '#0066cc' : '#666';
+          const typeBg = item.kind ? '#e6f3ff' : '#f0f0f0';
+          
+          let mediaHtml = '<span style="color: var(--muted);">No message</span>';
+          if (item.kind === 'video') {
+             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\`;
+          } else if (item.kind === 'audio') {
+             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\`;
+          } else if (item.message) {
+             mediaHtml = \`"\${item.message}"\`;
+          }
+
+          return \`
+          <tr id="row-\${item.sig_id}">
             <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
             <td>\${item.country || 'Unknown'}</td>
-            <td><span style="background: \${item.kind ? '#e6f3ff' : '#f0f0f0'}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${item.kind ? '#0066cc' : '#666'}; text-transform: uppercase;">\${item.kind || 'Text Only'}</span></td>
+            <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${typeLabel}</span></td>
+            <td>\${mediaHtml}</td>
             <td>
-              \${item.kind === 'video' ? \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\` : 
-                 item.kind === 'audio' ? \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\` : 
-                 item.message ? \`"\${item.message}"\` : '<span style="color: var(--muted);">No message</span>'}
-            </td>
-            <td>
-              <button class="btn-approve" onclick="moderate(\${item.id}, 'approve')">Approve</button>
-              <button class="btn-reject" onclick="moderate(\${item.id}, 'reject')">Reject</button>
+              <button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>
+              <button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>
             </td>
           </tr>
-        \`).join('');
+          \`;
+        }).join('');
       } catch (e) {
-        document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items.</td></tr>';
+        document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items. Check the network tab.</td></tr>';
       }
     }
 
@@ -145,7 +161,6 @@ export async function onRequestGet(context) {
       }
     }
 
-    // Load data on page load
     loadPending();
   </script>
 </body>
