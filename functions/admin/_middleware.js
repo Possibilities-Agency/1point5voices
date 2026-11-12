@@ -11,13 +11,13 @@ export async function onRequest(context) {
 
   const cookieHeader = request.headers.get("Cookie") || "";
   
-  // If the user has a session, allow them to access the dashboard
+  // If the user has a session, allow them to access the dashboard and APIs
   if (cookieHeader.includes("admin_session=")) {
     return context.next();
   }
 
-  // If the request is for the moderation API but they don't have a session, block it
-  if (url.pathname.startsWith('/api/admin/')) {
+  // If the request is for the moderation API but they don't have a session, block it with JSON
+  if (url.pathname === '/admin/moderate') {
      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
   }
 
