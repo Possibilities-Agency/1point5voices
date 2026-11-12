@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
 
   const isModerator = await checkGroupMembership(
     userData.email, 
-    "moderators@possibilities.agency", 
+    "1point5@futurebarbados.bb", 
     env.GOOGLE_CLIENT_ID, 
     env.GOOGLE_CLIENT_SECRET, 
     env.WORKSPACE_REFRESH_TOKEN
