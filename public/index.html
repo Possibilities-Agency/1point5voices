@@ -301,14 +301,65 @@
     const countries = Object.keys(stats.countries).length;
     $("pct").textContent = n ? `${countries} ${countries===1?"country":"countries"} so far` : "Every voice counts";
 
-    const pub = sigs.filter(s=>s.public).sort((a,b)=>(b.ts||0)-(a.ts||0));
-    // ticker
-    if(pub.length){
-      $("ticker").innerHTML = pub.slice(0,30).map(s=>`<span><b>${esc(s.first)}</b> from ${esc(s.country)} added their voice${s.role&&s.role!=="Citizen"?` as ${esc(s.role.toLowerCase()==="athlete"?"an athlete":"a"+(/^[aeiou]/i.test(s.role)?"n ":" ")+s.role.toLowerCase())}`:""}</span>`).join("");
+    // We get randomized data from the backend. Just filter for public.
+    const pub = sigs.filter(s=>s.public);
+    
+    // 1. Populate the Ticker (All Submissions)
+    const tickerContainer = $("ticker");
+    if (tickerContainer && pub.length > 0) {
+       tickerContainer.innerHTML = pub.map(s => 
+         `<span class="tick-item"><strong>${esc(s.first)}</strong> from ${esc(s.country)}</span>`
+       ).join('<span class="tick-sep">·</span>');
     }
-    // wall
-    if(pub.length){
-      $("wall").innerHTML = pub.slice(0,24).map(s=>`<div class="sig"><div class="nm">${esc(s.first)}</div><div class="meta">${esc(s.country)} · ${esc(s.role||"Citizen")}</div>${s.msg?`<div class="msg">“${esc(s.msg)}”</div>`:""}</div>`).join("");
+
+    // 2. Filter for the Wall (Only items with content: Text, Video, or Audio)
+    const wallItems = pub.filter(s => s.msg || s.kind === 'video' || s.kind === 'audio');
+    
+    // We only want to display a 3x3 grid, so slice the top 9
+    const gridItems = wallItems.slice(0, 9);
+    const wallContainer = $("wall");
+    
+    if (wallContainer && gridItems.length > 0) {
+      wallContainer.innerHTML = gridItems.map(item => {
+        let cellInner = '';
+        const safeName = esc(item.first);
+        const safeLoc = esc(item.country);
+        const safeRole = esc(item.role);
+
+        // Safety check added to prevent the 400 error on media files
+        if (item.kind === 'video' && item.media_id) {
+          cellInner = `
+            <video class="wall-cell-video-bg" autoplay loop muted playsinline src="/api/media/${item.media_id}"></video>
+            <div class="wall-cell-content">
+              <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
+              <button type="button" class="wall-btn" onclick="openPublicModal('video', '${item.media_id}', '${safeName}', '${safeLoc}', '${safeRole}')">▶ Watch</button>
+            </div>
+          `;
+          return `<div class="wall-cell has-video">${cellInner}</div>`;
+        } 
+        else if (item.kind === 'audio' && item.media_id) {
+           cellInner = `
+            <div class="wall-cell-content">
+              <div class="wall-msg" style="color: var(--label);">Audio Message Attached</div>
+              <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
+              <button type="button" class="wall-btn" style="margin-top: 16px;" onclick="openPublicModal('audio', '${item.media_id}', '${safeName}', '${safeLoc}', '${safeRole}')">🔊 Listen</button>
+            </div>
+          `;
+          return `<div class="wall-cell">${cellInner}</div>`;
+        }
+        else if (item.msg) {
+          const safeMsg = esc(item.msg);
+          cellInner = `
+            <div class="wall-cell-content">
+              <div class="wall-msg">"${safeMsg}"</div>
+              <button type="button" class="wall-btn" style="margin-top: 12px;" onclick="openPublicModal('text', \`${safeMsg.replace(/`/g, '&#96;')}\`, '${safeName}', '${safeLoc}', '${safeRole}')">Read More</button>
+              <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
+            </div>
+          `;
+          return `<div class="wall-cell">${cellInner}</div>`;
+        }
+        return '';
+      }).join('');
     }
     // roles
     const counts = stats.roles;

@@ -416,9 +416,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 
 .wall-cell {
   position: relative;
-  background: var(--sand);
-  border-radius: 12px;
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06); /* Original glassmorphism blue */
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   aspect-ratio: 1 / 1;
   overflow: hidden;
   display: flex;
@@ -427,7 +427,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 }
 
 .wall-cell.has-video {
-  padding: 0; /* Full bleed for video */
+  padding: 0;
   justify-content: flex-end;
 }
 
@@ -447,7 +447,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(11, 27, 43, 0.9) 0%, rgba(11, 27, 43, 0.2) 50%, transparent 100%);
+  background: linear-gradient(to top, rgba(11, 27, 43, 0.95) 0%, rgba(11, 27, 43, 0.2) 60%, transparent 100%);
   z-index: 2;
 }
 
@@ -466,20 +466,22 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 }
 
 .wall-msg {
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--ink);
+  font-family: Fraunces, serif;
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #e3ecf3; /* Original white/blue text */
   margin-bottom: auto;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
 }
 
 .wall-meta {
   margin-top: 16px;
   font-size: 13px;
-  color: var(--muted);
+  color: #9fb3c4; /* Original muted blue */
   font-weight: 600;
 }
 
@@ -491,9 +493,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 
 /* Action Buttons for Cells */
 .wall-btn {
-  background: var(--ocean);
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 8px 16px;
   border-radius: 999px;
   font-weight: 700;
@@ -501,9 +503,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   cursor: pointer;
   align-self: flex-start;
   transition: all 0.2s;
+  backdrop-filter: blur(4px);
 }
 
-.wall-btn:hover { background: var(--ink); }
+.wall-btn:hover { background: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.5); }
 .wall-cell.has-video .wall-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.4); }
 .wall-cell.has-video .wall-btn:hover { background: rgba(255,255,255,0.3); }
 
