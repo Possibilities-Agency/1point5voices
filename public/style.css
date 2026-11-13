@@ -67,7 +67,7 @@ button.sign:disabled{opacity:.6;cursor:default}
 .thanks p{color:var(--muted);margin:0 0 16px}
 .btn-ghost{font:inherit;font-weight:600;font-size:14px;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:10px 16px;cursor:pointer;color:var(--ink)}
 .ticker{margin-top:56px;border-top:1px solid rgba(255,255,255,.12);padding:16px 0;white-space:nowrap;overflow:hidden;color:#b8c9d6;font-size:14px}
-.ticker-in{display:inline-block;animation:scroll 60s linear infinite;padding-left:100%}
+.ticker-in{display:inline-block;animation:scroll 180s linear infinite;padding-left:100%}
 .ticker b{color:#fff;font-weight:600}
 .ticker span{margin-right:44px}
 @keyframes scroll{to{transform:translateX(-100%)}}
