@@ -1,6 +1,4 @@
 // functions/api/stats.js
-// GET /api/stats — public totals for the counter, map, role chips and wall.
-// Cached at Cloudflare's edge for 30 seconds, with a 24-hour background revalidation.
 
 export async function onRequestGet({ env }) {
   try {
