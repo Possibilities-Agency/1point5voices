@@ -33,7 +33,7 @@ export async function onRequestGet(context) {
   <title>Admin Dashboard | 1.5 Billion Voices</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    .admin-container { max-width: 1000px; margin: 60px auto; padding: 0 24px; }
+    .admin-container { max-width: 1060px; margin: 60px auto; padding: 0 24px; }
     .admin-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--line); padding-bottom: 20px; margin-bottom: 30px; }
     .admin-header h1 { margin: 0; font-size: 42px; line-height: 1; }
     .user-badge { background: var(--sand); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); }
@@ -42,15 +42,31 @@ export async function onRequestGet(context) {
     .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
     .panel { display: none; }
     .panel.active { display: block; }
-    .admin-table-wrap { background: #fff; border-radius: 18px; border: 1px solid var(--line); overflow: hidden; margin-bottom: 20px; }
+
+    /* Status Filter Bar */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; background: var(--sand); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+    .filter-btn:hover { border-color: var(--ink); color: var(--ink); }
+    .filter-btn.active { background: var(--ocean); color: #fff; border-color: var(--ocean); }
+
+    /* Table & Action Buttons */
+    .admin-table-wrap { background: #fff; border-radius: 18px; border: 1px solid var(--line); overflow-x: auto; margin-bottom: 20px; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-    th, td { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+    th, td { padding: 16px 18px; border-bottom: 1px solid var(--line); vertical-align: middle; }
     th { background: var(--sand); font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; }
     tr:last-child td { border-bottom: none; }
-    .btn-approve { background: var(--reef); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; }
-    .btn-reject { background: var(--heat); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; margin-left: 8px; }
+    .action-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn-approve { background: var(--reef); color: white; border: none; padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; cursor: pointer; }
+    .btn-reject { background: var(--heat); color: white; border: none; padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; cursor: pointer; }
+    .btn-pending { background: var(--sand); color: var(--ink); border: 1px solid var(--line); padding: 5px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; cursor: pointer; }
     .btn-media { background: transparent; color: var(--ocean); border: 1.5px solid var(--ocean); padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; cursor: pointer; }
     
+    /* Status Badges */
+    .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .status-pending { background: #fff4e5; color: #b25e09; }
+    .status-approved { background: #e6f7f4; color: #0e7a67; }
+    .status-rejected { background: #ffebe6; color: #bf2600; }
+
     /* Pagination Styles */
     .pagination { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; color: var(--muted); }
     .page-controls { display: flex; gap: 10px; }
@@ -123,15 +139,22 @@ export async function onRequestGet(context) {
     </div>
     
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('moderation', this)">Pending Signatures</button>
-      <button class="tab" onclick="switchTab('analytics', this)">Signatures & Export</button>
+      <button class="tab active" onclick="switchTab('moderation', this)">Signatures & Moderation</button>
+      <button class="tab" onclick="switchTab('analytics', this)">Analytics & Export</button>
       <button class="tab" onclick="switchTab('hero-media', this)">Hero Media</button>
     </div>
 
     <div id="moderation" class="panel active">
-      <h2 style="margin-bottom: 8px;">Pending Signatures</h2>
-      <p style="color: var(--muted); margin-bottom: 24px;">Approve signatures and media to display them on the public wall.</p>
+      <h2 style="margin-bottom: 8px;" id="mod-heading">Pending Signatures</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Review submissions and update visibility status for the public wall.</p>
       
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setStatusFilter('pending', this)">Pending</button>
+        <button class="filter-btn" onclick="setStatusFilter('approved', this)">Approved</button>
+        <button class="filter-btn" onclick="setStatusFilter('rejected', this)">Rejected</button>
+        <button class="filter-btn" onclick="setStatusFilter('all', this)">All Submissions</button>
+      </div>
+
       <div class="admin-table-wrap">
         <table>
           <thead>
@@ -139,12 +162,13 @@ export async function onRequestGet(context) {
               <th>Name</th>
               <th>Location</th>
               <th>Type</th>
+              <th>Status</th>
               <th>Message / Media</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="media-list">
-            <tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">Loading pending signatures...</td></tr>
+            <tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">Loading signatures...</td></tr>
           </tbody>
         </table>
       </div>
@@ -201,7 +225,6 @@ export async function onRequestGet(context) {
               Mobile Focus: <span id="active-position-label">${activeHeroPosition}</span>
             </div>
           </div>
-          ${activeHeroVideo ? `<button class="btn-page" onclick="adjustCrop()">Adjust Crop</button>` : ''}
         </div>
 
         <input type="file" id="hero-video-file" accept="video/mp4,video/webm,video/*" style="display: none;">
@@ -209,7 +232,7 @@ export async function onRequestGet(context) {
         <div class="drop-zone" id="drop-zone">
           <div class="drop-zone-icon">📥</div>
           <div class="drop-zone-text">Drag & drop your landscape video here</div>
-          <div class="drop-zone-sub">or click to browse your files (MP4 recommended, up to 5 GB)</div>
+          <div class="drop-zone-sub">or click to browse your files (MP4 recommended, max 100 MB)</div>
         </div>
 
         <div class="preview-ui" id="preview-ui">
@@ -227,12 +250,11 @@ export async function onRequestGet(context) {
           </div>
 
           <button id="btn-hero-upload" class="btn-upload" onclick="uploadHeroVideo()">Upload & Set Active</button>
-          <button id="btn-hero-adjust" class="btn-upload" style="display: none;" onclick="saveCropAdjustment()">Save New Crop</button>
           <button id="btn-hero-cancel" class="btn-cancel" onclick="resetUploadUI()">Cancel</button>
 
           <div class="progress-section" id="progress-section">
             <div class="progress-meta">
-              <span id="progress-phase">Requesting secure link...</span>
+              <span id="progress-phase">Uploading to Cloudflare...</span>
               <span id="progress-stats">0.0 MB / 0.0 MB (0%)</span>
             </div>
             <div class="progress-wrap">
@@ -256,8 +278,17 @@ export async function onRequestGet(context) {
 
   <script>
     let currentPage = 1;
-    let currentActiveVideo = "${activeHeroVideo}";
-    let currentActivePosition = "${activeHeroPosition}";
+    let currentStatus = 'pending';
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
     function switchTab(id, btnEl) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -269,6 +300,24 @@ export async function onRequestGet(context) {
       if (id === 'analytics') {
         loadAnalytics();
       }
+    }
+
+    function setStatusFilter(status, btnEl) {
+      currentStatus = status;
+      currentPage = 1;
+
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+
+      const headings = {
+        pending: 'Pending Signatures',
+        approved: 'Approved Signatures',
+        rejected: 'Rejected Signatures',
+        all: 'All Submissions'
+      };
+      document.getElementById('mod-heading').textContent = headings[status] || 'Signatures';
+
+      loadSignatures(1, status);
     }
 
     // Drag and Drop & Targeting UI Logic
@@ -314,58 +363,23 @@ export async function onRequestGet(context) {
       const fileMetaEl = document.getElementById('selected-file-meta');
       const statusEl = document.getElementById('hero-upload-status');
       fileMetaEl.textContent = \`\${selectedFile.name} · \${sizeMB} MB\`;
-      fileMetaEl.style.display = 'inline-block';
 
-      if (selectedFile.size > 5 * 1024 * 1024 * 1024) {
+      if (selectedFile.size > 95 * 1024 * 1024) {
         statusEl.style.color = 'var(--heat)';
-        statusEl.textContent = 'Warning: Files over 5 GB exceed the maximum allowed size for direct uploads.';
+        statusEl.textContent = 'Warning: Files over 95 MB may be rejected by Cloudflare Pages request limits. Compress to MP4 (H.264) if upload fails.';
       } else {
         statusEl.textContent = '';
       }
       
-      // Load video preview
       const url = URL.createObjectURL(selectedFile);
       previewVid.src = url;
       
-      // Reset slider to center
       cropSlider.value = 50;
       previewVid.style.objectPosition = '50% 50%';
       sliderVal.textContent = '50%';
       
-      // Switch UI views
       dropZone.style.display = 'none';
       previewUI.style.display = 'block';
-      document.getElementById('btn-hero-upload').style.display = 'inline-block';
-      document.getElementById('btn-hero-adjust').style.display = 'none';
-    }
-
-    function adjustCrop() {
-      if (!currentActiveVideo) return;
-      
-      // Hide drop zone, show preview UI
-      dropZone.style.display = 'none';
-      previewUI.style.display = 'block';
-      
-      // Swap buttons and hide upload-specific elements
-      document.getElementById('btn-hero-upload').style.display = 'none';
-      document.getElementById('btn-hero-adjust').style.display = 'inline-block';
-      document.getElementById('selected-file-meta').style.display = 'none';
-      document.getElementById('progress-section').style.display = 'none';
-      document.getElementById('hero-upload-status').textContent = '';
-      
-      // Stream the active video directly from the new edge endpoint
-      previewVid.src = '/api/media/hero';
-      
-      // Parse the saved string (e.g. "75% 50%") to configure the slider
-      let pct = 50;
-      if (currentActivePosition) {
-         const match = currentActivePosition.match(/(\\d+)%/);
-         if (match) pct = parseInt(match[1]);
-      }
-      
-      cropSlider.value = pct;
-      previewVid.style.objectPosition = \`\${pct}% 50%\`;
-      sliderVal.textContent = \`\${pct}%\`;
     }
 
     cropSlider.addEventListener('input', (e) => {
@@ -385,53 +399,12 @@ export async function onRequestGet(context) {
       progressBar.classList.remove('processing');
       previewUI.style.display = 'none';
       dropZone.style.display = 'block';
-      
       document.getElementById('btn-hero-upload').disabled = false;
-      document.getElementById('btn-hero-upload').style.display = 'inline-block';
-      document.getElementById('btn-hero-adjust').disabled = false;
-      document.getElementById('btn-hero-adjust').style.display = 'none';
       document.getElementById('btn-hero-cancel').disabled = false;
     }
 
-    // Reuse the hero-confirm endpoint to save adjustment without re-uploading
-    async function saveCropAdjustment() {
-      const btn = document.getElementById('btn-hero-adjust');
-      const cancelBtn = document.getElementById('btn-hero-cancel');
-      const statusEl = document.getElementById('hero-upload-status');
-      const finalPosition = \`\${cropSlider.value}% 50%\`;
-
-      btn.disabled = true;
-      cancelBtn.disabled = true;
-      statusEl.style.color = 'var(--muted)';
-      statusEl.textContent = 'Saving new crop alignment...';
-
-      try {
-        const confirmRes = await fetch('/admin/hero-confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ r2Key: currentActiveVideo, position: finalPosition })
-        });
-
-        const confirmData = await confirmRes.json();
-        if (confirmRes.ok && confirmData.success) {
-           statusEl.style.color = 'var(--reef)';
-           statusEl.textContent = 'Success! Crop position updated.';
-           currentActivePosition = finalPosition;
-           document.getElementById('active-position-label').textContent = finalPosition;
-           setTimeout(resetUploadUI, 2000);
-        } else {
-           throw new Error(confirmData.error || 'Failed to save configuration.');
-        }
-      } catch (err) {
-        statusEl.style.color = 'var(--heat)';
-        statusEl.textContent = 'Database update failed: ' + err.message;
-        btn.disabled = false;
-        cancelBtn.disabled = false;
-      }
-    }
-
-    // Direct Pre-Signed R2 Upload Logic
-    async function uploadHeroVideo() {
+    // XHR Upload Logic with Granular MB & Two-Stage Progress
+    function uploadHeroVideo() {
       if (!selectedFile) return;
 
       const statusEl = document.getElementById('hero-upload-status');
@@ -444,113 +417,82 @@ export async function onRequestGet(context) {
       const finalPosition = \`\${cropSlider.value}% 50%\`;
       const totalMB = formatMB(selectedFile.size);
 
+      const formData = new FormData();
+      formData.append('video', selectedFile);
+      formData.append('position', finalPosition);
+
       btn.disabled = true;
       cancelBtn.disabled = true;
       progressSection.style.display = 'block';
       progressBar.classList.remove('processing');
       progressBar.style.width = '0%';
-      progressPhase.textContent = 'Step 1/3: Requesting secure upload link...';
+      progressPhase.textContent = 'Step 1/2: Uploading to Cloudflare...';
       progressStats.textContent = \`0.0 MB / \${totalMB} MB (0%)\`;
       statusEl.style.color = 'var(--muted)';
-      statusEl.textContent = 'Keep this tab open until all steps complete.';
+      statusEl.textContent = 'Keep this tab open until both steps complete.';
 
-      try {
-        // Step 1: Request Pre-signed URL
-        const authRes = await fetch('/admin/hero-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: selectedFile.name, fileType: selectedFile.type })
-        });
-        
-        if (authRes.status === 401) { window.location.reload(); return; }
-        const authData = await authRes.json();
-        
-        if (!authRes.ok || !authData.success) {
-          throw new Error(authData.error || 'Failed to authorize upload.');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/admin/hero-upload', true);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
+          const loadedMB = formatMB(e.loaded);
+          const totalTransferMB = formatMB(e.total);
+          progressBar.style.width = pct + '%';
+          progressStats.textContent = \`\${loadedMB} MB / \${totalTransferMB} MB (\${pct}%)\`;
+        }
+      };
+
+      xhr.upload.onload = () => {
+        progressBar.style.width = '100%';
+        progressBar.classList.add('processing');
+        progressPhase.textContent = 'Step 2/2: Saving to Cloudflare R2...';
+        progressStats.textContent = \`\${totalMB} MB / \${totalMB} MB (100%)\`;
+        statusEl.style.color = 'var(--ocean)';
+        statusEl.textContent = 'Transfer complete. Finalizing storage in R2 bucket...';
+      };
+
+      xhr.onload = function() {
+        progressBar.classList.remove('processing');
+        if (xhr.status === 401) {
+          window.location.reload();
+          return;
         }
 
-        progressPhase.textContent = 'Step 2/3: Uploading to Cloudflare R2...';
-
-        // Step 2: Direct Upload to R2 via XMLHttpRequest to track progress
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', authData.uploadUrl, true);
-        xhr.setRequestHeader('Content-Type', selectedFile.type);
-        
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
-            progressBar.style.width = pct + '%';
-            progressStats.textContent = \`\${formatMB(e.loaded)} MB / \${totalMB} MB (\${pct}%)\`;
-          }
-        };
-
-        xhr.onload = async () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            progressBar.classList.add('processing');
-            progressPhase.textContent = 'Step 3/3: Saving configuration...';
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status === 200 && data.success) {
+            progressPhase.textContent = 'Complete!';
+            statusEl.style.color = 'var(--reef)';
+            statusEl.textContent = 'Success! Active hero video updated.';
+            document.getElementById('active-video-label').textContent = data.active_video;
+            document.getElementById('active-position-label').textContent = data.position;
             
-            // Step 3: Confirm Database Update
-            try {
-              const confirmRes = await fetch('/admin/hero-confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ r2Key: authData.active_video, position: finalPosition })
-              });
-
-              const confirmData = await confirmRes.json();
-              if (confirmRes.ok && confirmData.success) {
-                 progressPhase.textContent = 'Complete!';
-                 statusEl.style.color = 'var(--reef)';
-                 statusEl.textContent = 'Success! Active hero video updated.';
-                 
-                 // Update active variables so immediate adjustment works
-                 currentActiveVideo = authData.active_video;
-                 currentActivePosition = finalPosition;
-                 
-                 document.getElementById('active-video-label').textContent = authData.active_video;
-                 document.getElementById('active-position-label').textContent = finalPosition;
-                 // Show the "Adjust Crop" button in the banner if it wasn't there
-                 if (!document.querySelector('.active-video-banner button')) {
-                    const btnHtml = \`<button class="btn-page" onclick="adjustCrop()">Adjust Crop</button>\`;
-                    document.querySelector('.active-video-banner').insertAdjacentHTML('beforeend', btnHtml);
-                 }
-                 setTimeout(resetUploadUI, 3000);
-              } else {
-                 throw new Error(confirmData.error || 'Failed to save configuration.');
-              }
-            } catch (confirmErr) {
-              progressBar.classList.remove('processing');
-              statusEl.style.color = 'var(--heat)';
-              statusEl.textContent = 'Database confirmation failed: ' + confirmErr.message;
-              btn.disabled = false;
-              cancelBtn.disabled = false;
-            }
+            setTimeout(resetUploadUI, 3000);
           } else {
-            progressBar.classList.remove('processing');
             statusEl.style.color = 'var(--heat)';
-            statusEl.textContent = \`Upload rejected by R2 (HTTP \${xhr.status})\`;
+            statusEl.textContent = 'Upload failed (HTTP ' + xhr.status + '): ' + (data.error || 'Unknown error');
             btn.disabled = false;
             cancelBtn.disabled = false;
           }
-        };
-
-        xhr.onerror = () => {
-          progressBar.classList.remove('processing');
+        } catch (err) {
           statusEl.style.color = 'var(--heat)';
-          statusEl.textContent = 'Network error during file transfer.';
+          statusEl.textContent = 'Upload failed (HTTP ' + xhr.status + '). File may exceed Cloudflare Pages 100 MB limit.';
           btn.disabled = false;
           cancelBtn.disabled = false;
-        };
+        }
+      };
 
-        xhr.send(selectedFile);
-
-      } catch (err) {
+      xhr.onerror = function() {
         progressBar.classList.remove('processing');
         statusEl.style.color = 'var(--heat)';
-        statusEl.textContent = 'Upload failed: ' + err.message;
+        statusEl.textContent = 'Network error while uploading video.';
         btn.disabled = false;
         cancelBtn.disabled = false;
-      }
+      };
+
+      xhr.send(formData);
     }
 
     // Modal logic
@@ -569,34 +511,65 @@ export async function onRequestGet(context) {
     }
 
     function closeModal(event) {
-      if (event) event.preventDefault();
+      if(event) event.preventDefault();
       const modal = document.getElementById('mediaModal');
       const body = document.getElementById('modalBody');
       modal.classList.remove('active');
       setTimeout(() => { body.innerHTML = ''; }, 200); 
     }
 
-    async function loadPending(page = 1) {
+    function getStatusBadge(item) {
+      if (item.is_public === -1 || item.media_status === 'rejected') {
+        return '<span class="status-pill status-rejected">Rejected</span>';
+      }
+      if (item.is_public === 0 || item.media_status === 'pending') {
+        return '<span class="status-pill status-pending">Pending</span>';
+      }
+      return '<span class="status-pill status-approved">Approved</span>';
+    }
+
+    function getActionButtons(item) {
+      const isRejected = item.is_public === -1 || item.media_status === 'rejected';
+      const isPending = !isRejected && (item.is_public === 0 || item.media_status === 'pending');
+      const isApproved = !isRejected && !isPending;
+
+      let buttons = [];
+      if (!isApproved) {
+        buttons.push(\`<button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>\`);
+      }
+      if (!isRejected) {
+        buttons.push(\`<button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>\`);
+      }
+      if (!isPending) {
+        buttons.push(\`<button class="btn-pending" onclick="moderate(\${item.sig_id}, 'pending')">Set Pending</button>\`);
+      }
+      return \`<div class="action-group">\${buttons.join('')}</div>\`;
+    }
+
+    async function loadSignatures(page = 1, status = currentStatus) {
+      const tbody = document.getElementById('media-list');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">Loading signatures...</td></tr>';
+
       try {
-        const response = await fetch(\`/admin/moderate?page=\${page}\`);
+        const response = await fetch(\`/admin/moderate?page=\${page}&status=\${encodeURIComponent(status)}\`);
         if (response.status === 401) {
           window.location.reload(); 
           return;
         }
         
         const data = await response.json();
-        const tbody = document.getElementById('media-list');
         
         if (data.error) {
-          tbody.innerHTML = \`<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error: \${data.error}</td></tr>\`;
+          tbody.innerHTML = \`<tr><td colspan="6" style="text-align: center; color: var(--heat); padding: 40px;">Error: \${escapeHtml(data.error)}</td></tr>\`;
           return;
         }
 
         if (!data.pending || data.pending.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No pending signatures to review.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">No signatures found in this view.</td></tr>';
           document.getElementById('btn-prev').disabled = true;
           document.getElementById('btn-next').disabled = true;
           document.getElementById('page-info').innerHTML = 'No items';
+          if (status === 'pending') window._pendingTotal = 0;
           return;
         }
 
@@ -611,42 +584,42 @@ export async function onRequestGet(context) {
           } else if (item.kind === 'audio' && item.media_id) {
              mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'audio')">Listen to Audio</button>\`;
           } else if (item.message) {
-             mediaHtml = \`"\${item.message}"\`;
+             mediaHtml = \`"\${escapeHtml(item.message)}"\`;
           }
 
           return \`
           <tr id="row-\${item.sig_id}">
-            <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
-            <td>\${item.country || 'Unknown'}</td>
-            <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${typeLabel}</span></td>
+            <td><strong>\${escapeHtml(item.first_name || 'Anonymous')}</strong></td>
+            <td>\${escapeHtml(item.country || 'Unknown')}</td>
+            <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${escapeHtml(typeLabel)}</span></td>
+            <td>\${getStatusBadge(item)}</td>
             <td>\${mediaHtml}</td>
-            <td>
-              <button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>
-              <button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>
-            </td>
+            <td>\${getActionButtons(item)}</td>
           </tr>
           \`;
         }).join('');
 
         currentPage = data.pagination.currentPage;
-        document.getElementById('page-info').innerHTML = \`Showing page \${currentPage} of \${data.pagination.totalPages} (\${data.pagination.totalItems} total pending)\`;
+        document.getElementById('page-info').innerHTML = \`Showing page \${currentPage} of \${data.pagination.totalPages} (\${data.pagination.totalItems} total)\`;
         document.getElementById('btn-prev').disabled = currentPage <= 1;
         document.getElementById('btn-next').disabled = !data.pagination.hasMore;
         
-        window._pendingTotal = data.pagination.totalItems;
+        if (status === 'pending') {
+          window._pendingTotal = data.pagination.totalItems;
+        }
 
       } catch (e) {
-        document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items. Check the network tab.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--heat); padding: 40px;">Error loading signatures. Check the network tab.</td></tr>';
       }
     }
 
     function changePage(direction) {
-      loadPending(currentPage + direction);
+      loadSignatures(currentPage + direction, currentStatus);
     }
 
     async function moderate(id, action) {
       const row = document.getElementById(\`row-\${id}\`);
-      row.style.opacity = '0.5';
+      if (row) row.style.opacity = '0.5';
       
       try {
         const res = await fetch('/admin/moderate', {
@@ -656,16 +629,20 @@ export async function onRequestGet(context) {
         });
         
         if (res.ok) {
-          row.remove();
-          if (document.getElementById('media-list').children.length === 0) {
-            loadPending(currentPage);
+          if (currentStatus === 'all') {
+            loadSignatures(currentPage, currentStatus);
+          } else {
+            if (row) row.remove();
+            if (document.getElementById('media-list').children.length === 0) {
+              loadSignatures(currentPage, currentStatus);
+            }
           }
         } else {
-          row.style.opacity = '1';
+          if (row) row.style.opacity = '1';
           alert('Failed to update status.');
         }
       } catch (e) {
-        row.style.opacity = '1';
+        if (row) row.style.opacity = '1';
         alert('An error occurred.');
       }
     }
@@ -677,13 +654,13 @@ export async function onRequestGet(context) {
         
         document.getElementById('stat-total').innerText = data.total.toLocaleString();
         document.getElementById('stat-countries').innerText = Object.keys(data.countries).length;
-        document.getElementById('stat-pending').innerText = window._pendingTotal || "0";
+        document.getElementById('stat-pending').innerText = window._pendingTotal !== undefined ? window._pendingTotal : "0";
       } catch (e) {
         console.error("Failed to load analytics");
       }
     }
 
-    loadPending();
+    loadSignatures(1, 'pending');
   </script>
 </body>
 </html>`;
