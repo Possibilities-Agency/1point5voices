@@ -21,13 +21,19 @@ export async function onRequestGet(context) {
     .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
     .panel { display: none; }
     .panel.active { display: block; }
-    .admin-table-wrap { background: #fff; border-radius: 18px; border: 1px solid var(--line); overflow: hidden; }
+    .admin-table-wrap { background: #fff; border-radius: 18px; border: 1px solid var(--line); overflow: hidden; margin-bottom: 20px; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
     th, td { padding: 16px 20px; border-bottom: 1px solid var(--line); }
     th { background: var(--sand); font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; }
     tr:last-child td { border-bottom: none; }
     .btn-approve { background: var(--reef); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; }
     .btn-reject { background: var(--heat); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; margin-left: 8px; }
+    
+    /* Pagination Styles */
+    .pagination { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; color: var(--muted); }
+    .page-controls { display: flex; gap: 10px; }
+    .btn-page { background: var(--sand); color: var(--ink); border: 1px solid var(--line); padding: 6px 16px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+    .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -66,6 +72,14 @@ export async function onRequestGet(context) {
           </tbody>
         </table>
       </div>
+
+      <div class="pagination">
+        <div id="page-info">Showing page 1</div>
+        <div class="page-controls">
+          <button id="btn-prev" class="btn-page" onclick="changePage(-1)" disabled>Previous</button>
+          <button id="btn-next" class="btn-page" onclick="changePage(1)" disabled>Next</button>
+        </div>
+      </div>
     </div>
 
     <div id="analytics" class="panel">
@@ -75,6 +89,8 @@ export async function onRequestGet(context) {
   </div>
 
   <script>
+    let currentPage = 1;
+
     function switchTab(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -82,9 +98,9 @@ export async function onRequestGet(context) {
       event.target.classList.add('active');
     }
 
-    async function loadPending() {
+    async function loadPending(page = 1) {
       try {
-        const response = await fetch('/admin/moderate');
+        const response = await fetch(\`/api/admin/moderate?page=\${page}\`);
         if (response.status === 401) {
           window.location.reload(); 
           return;
@@ -100,6 +116,9 @@ export async function onRequestGet(context) {
 
         if (!data.pending || data.pending.length === 0) {
           tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No pending signatures to review.</td></tr>';
+          document.getElementById('btn-prev').disabled = true;
+          document.getElementById('btn-next').disabled = true;
+          document.getElementById('page-info').innerHTML = 'No items';
           return;
         }
 
@@ -110,29 +129,40 @@ export async function onRequestGet(context) {
           
           let mediaHtml = '<span style="color: var(--muted);">No message</span>';
           if (item.kind === 'video') {
-             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\`;
+             mediaHtml = \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\`;
           } else if (item.kind === 'audio') {
-             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\`;
+             mediaHtml = \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\`;
           } else if (item.message) {
              mediaHtml = \`"\${item.message}"\`;
           }
 
           return \`
-          <tr id="row-\${item.sig_id}">
+          <tr id="row-\${item.id}">
             <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
             <td>\${item.country || 'Unknown'}</td>
             <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${typeLabel}</span></td>
             <td>\${mediaHtml}</td>
             <td>
-              <button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>
-              <button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>
+              <button class="btn-approve" onclick="moderate(\${item.id}, 'approve')">Approve</button>
+              <button class="btn-reject" onclick="moderate(\${item.id}, 'reject')">Reject</button>
             </td>
           </tr>
           \`;
         }).join('');
+
+        // Update Pagination UI
+        currentPage = data.pagination.currentPage;
+        document.getElementById('page-info').innerHTML = \`Showing page \${currentPage} of \${data.pagination.totalPages} (\${data.pagination.totalItems} total pending)\`;
+        document.getElementById('btn-prev').disabled = currentPage <= 1;
+        document.getElementById('btn-next').disabled = !data.pagination.hasMore;
+
       } catch (e) {
         document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items. Check the network tab.</td></tr>';
       }
+    }
+
+    function changePage(direction) {
+      loadPending(currentPage + direction);
     }
 
     async function moderate(id, action) {
@@ -140,7 +170,7 @@ export async function onRequestGet(context) {
       row.style.opacity = '0.5';
       
       try {
-        const res = await fetch('/admin/moderate', {
+        const res = await fetch('/api/admin/moderate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, action })
@@ -148,8 +178,9 @@ export async function onRequestGet(context) {
         
         if (res.ok) {
           row.remove();
+          // If the page is emptied, refresh to load the next batch automatically
           if (document.getElementById('media-list').children.length === 0) {
-            document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No pending signatures to review.</td></tr>';
+            loadPending(currentPage);
           }
         } else {
           row.style.opacity = '1';
