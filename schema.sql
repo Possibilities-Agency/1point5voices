@@ -27,3 +27,12 @@ CREATE TABLE IF NOT EXISTS media (
   created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_media_status ON media(status, id);
+
+-- Site Settings (e.g., Active Hero Video)
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO settings (key, value) VALUES ('hero_video_key', '');
