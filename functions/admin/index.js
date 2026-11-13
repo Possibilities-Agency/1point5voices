@@ -208,7 +208,7 @@ export async function onRequestGet(context) {
         <div class="drop-zone" id="drop-zone">
           <div class="drop-zone-icon">📥</div>
           <div class="drop-zone-text">Drag & drop your landscape video here</div>
-          <div class="drop-zone-sub">or click to browse your files (MP4 recommended, max 100 MB)</div>
+          <div class="drop-zone-sub">or click to browse your files (MP4 recommended, up to 5 GB)</div>
         </div>
 
         <div class="preview-ui" id="preview-ui">
@@ -230,7 +230,7 @@ export async function onRequestGet(context) {
 
           <div class="progress-section" id="progress-section">
             <div class="progress-meta">
-              <span id="progress-phase">Uploading to Cloudflare...</span>
+              <span id="progress-phase">Requesting secure link...</span>
               <span id="progress-stats">0.0 MB / 0.0 MB (0%)</span>
             </div>
             <div class="progress-wrap">
@@ -311,9 +311,9 @@ export async function onRequestGet(context) {
       const statusEl = document.getElementById('hero-upload-status');
       fileMetaEl.textContent = \`\${selectedFile.name} · \${sizeMB} MB\`;
 
-      if (selectedFile.size > 95 * 1024 * 1024) {
+      if (selectedFile.size > 5 * 1024 * 1024 * 1024) {
         statusEl.style.color = 'var(--heat)';
-        statusEl.textContent = 'Warning: Files over 95 MB may be rejected by Cloudflare Pages request limits. Compress to MP4 (H.264) if upload fails.';
+        statusEl.textContent = 'Warning: Files over 5 GB exceed the maximum allowed size for direct uploads.';
       } else {
         statusEl.textContent = '';
       }
@@ -353,8 +353,8 @@ export async function onRequestGet(context) {
       document.getElementById('btn-hero-cancel').disabled = false;
     }
 
-    // XHR Upload Logic with Granular MB & Two-Stage Progress
-    function uploadHeroVideo() {
+    // Direct Pre-Signed R2 Upload Logic
+    async function uploadHeroVideo() {
       if (!selectedFile) return;
 
       const statusEl = document.getElementById('hero-upload-status');
@@ -367,84 +367,103 @@ export async function onRequestGet(context) {
       const finalPosition = \`\${cropSlider.value}% 50%\`;
       const totalMB = formatMB(selectedFile.size);
 
-      const formData = new FormData();
-      formData.append('video', selectedFile);
-      formData.append('position', finalPosition);
-
       btn.disabled = true;
       cancelBtn.disabled = true;
       progressSection.style.display = 'block';
       progressBar.classList.remove('processing');
       progressBar.style.width = '0%';
-      progressPhase.textContent = 'Step 1/2: Uploading to Cloudflare...';
+      progressPhase.textContent = 'Step 1/3: Requesting secure upload link...';
       progressStats.textContent = \`0.0 MB / \${totalMB} MB (0%)\`;
       statusEl.style.color = 'var(--muted)';
-      statusEl.textContent = 'Keep this tab open until both steps complete.';
+      statusEl.textContent = 'Keep this tab open until all steps complete.';
 
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/admin/hero-upload', true);
-
-      // Stage 1: Browser -> Cloudflare Edge transfer progress
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
-          const loadedMB = formatMB(e.loaded);
-          const totalTransferMB = formatMB(e.total);
-          progressBar.style.width = pct + '%';
-          progressStats.textContent = \`\${loadedMB} MB / \${totalTransferMB} MB (\${pct}%)\`;
-        }
-      };
-
-      // Stage 2: Browser finished sending; Cloudflare Function is writing to R2 & D1
-      xhr.upload.onload = () => {
-        progressBar.style.width = '100%';
-        progressBar.classList.add('processing');
-        progressPhase.textContent = 'Step 2/2: Saving to Cloudflare R2...';
-        progressStats.textContent = \`\${totalMB} MB / \${totalMB} MB (100%)\`;
-        statusEl.style.color = 'var(--ocean)';
-        statusEl.textContent = 'Transfer complete. Finalizing storage in R2 bucket...';
-      };
-
-      xhr.onload = function() {
-        progressBar.classList.remove('processing');
-        if (xhr.status === 401) {
-          window.location.reload();
-          return;
+      try {
+        // Step 1: Request Pre-signed URL
+        const authRes = await fetch('/admin/hero-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName: selectedFile.name, fileType: selectedFile.type })
+        });
+        
+        if (authRes.status === 401) { window.location.reload(); return; }
+        const authData = await authRes.json();
+        
+        if (!authRes.ok || !authData.success) {
+          throw new Error(authData.error || 'Failed to authorize upload.');
         }
 
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (xhr.status === 200 && data.success) {
-            progressPhase.textContent = 'Complete!';
-            statusEl.style.color = 'var(--reef)';
-            statusEl.textContent = 'Success! Active hero video updated.';
-            document.getElementById('active-video-label').textContent = data.active_video;
-            document.getElementById('active-position-label').textContent = data.position;
+        progressPhase.textContent = 'Step 2/3: Uploading to Cloudflare R2...';
+
+        // Step 2: Direct Upload to R2 via XMLHttpRequest to track progress
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', authData.uploadUrl, true);
+        xhr.setRequestHeader('Content-Type', selectedFile.type);
+        
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
+            progressBar.style.width = pct + '%';
+            progressStats.textContent = \`\${formatMB(e.loaded)} MB / \${totalMB} MB (\${pct}%)\`;
+          }
+        };
+
+        xhr.onload = async () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            progressBar.classList.add('processing');
+            progressPhase.textContent = 'Step 3/3: Saving configuration...';
             
-            setTimeout(resetUploadUI, 3000);
+            // Step 3: Confirm Database Update
+            try {
+              const confirmRes = await fetch('/admin/hero-confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ r2Key: authData.active_video, position: finalPosition })
+              });
+
+              const confirmData = await confirmRes.json();
+              if (confirmRes.ok && confirmData.success) {
+                 progressPhase.textContent = 'Complete!';
+                 statusEl.style.color = 'var(--reef)';
+                 statusEl.textContent = 'Success! Active hero video updated.';
+                 document.getElementById('active-video-label').textContent = authData.active_video;
+                 document.getElementById('active-position-label').textContent = finalPosition;
+                 setTimeout(resetUploadUI, 3000);
+              } else {
+                 throw new Error(confirmData.error || 'Failed to save configuration.');
+              }
+            } catch (confirmErr) {
+              progressBar.classList.remove('processing');
+              statusEl.style.color = 'var(--heat)';
+              statusEl.textContent = 'Database confirmation failed: ' + confirmErr.message;
+              btn.disabled = false;
+              cancelBtn.disabled = false;
+            }
           } else {
+            progressBar.classList.remove('processing');
             statusEl.style.color = 'var(--heat)';
-            statusEl.textContent = 'Upload failed (HTTP ' + xhr.status + '): ' + (data.error || 'Unknown error');
+            statusEl.textContent = \`Upload rejected by R2 (HTTP \${xhr.status})\`;
             btn.disabled = false;
             cancelBtn.disabled = false;
           }
-        } catch (err) {
+        };
+
+        xhr.onerror = () => {
+          progressBar.classList.remove('processing');
           statusEl.style.color = 'var(--heat)';
-          statusEl.textContent = 'Upload failed (HTTP ' + xhr.status + '). File may exceed Cloudflare Pages 100 MB limit.';
+          statusEl.textContent = 'Network error during file transfer.';
           btn.disabled = false;
           cancelBtn.disabled = false;
-        }
-      };
+        };
 
-      xhr.onerror = function() {
+        xhr.send(selectedFile);
+
+      } catch (err) {
         progressBar.classList.remove('processing');
         statusEl.style.color = 'var(--heat)';
-        statusEl.textContent = 'Network error while uploading video.';
+        statusEl.textContent = 'Upload failed: ' + err.message;
         btn.disabled = false;
         cancelBtn.disabled = false;
-      };
-
-      xhr.send(formData);
+      }
     }
 
     // Modal logic
@@ -472,7 +491,7 @@ export async function onRequestGet(context) {
 
     async function loadPending(page = 1) {
       try {
-        const response = await fetch(\`/admin/moderate?page=\${page}\`);
+        const response = await fetch(\`/api/admin/moderate?page=\${page}\`);
         if (response.status === 401) {
           window.location.reload(); 
           return;
@@ -543,7 +562,7 @@ export async function onRequestGet(context) {
       row.style.opacity = '0.5';
       
       try {
-        const res = await fetch('/admin/moderate', {
+        const res = await fetch('/api/admin/moderate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, action })
