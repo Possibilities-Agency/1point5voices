@@ -14,9 +14,10 @@ export async function onRequestPost(context) {
   }
 
   try {
-    // 2. Parse the uploaded file from the form data
+    // 2. Parse the uploaded file and the crop position from the form data
     const formData = await request.formData();
     const file = formData.get("video");
+    const position = formData.get("position") || "50% 50%"; // Default to center
 
     if (!file || !(file instanceof File)) {
       return new Response(JSON.stringify({ error: "No valid video file provided." }), { status: 400, headers: { "Content-Type": "application/json" } });
@@ -35,7 +36,12 @@ export async function onRequestPost(context) {
       "UPDATE settings SET value = ?, updated_at = datetime('now') WHERE key = 'hero_video_key'"
     ).bind(r2Key).run();
 
-    return new Response(JSON.stringify({ success: true, active_video: r2Key }), {
+    // 5. Save the crop position in the database
+    await env.DB.prepare(
+      "UPDATE settings SET value = ?, updated_at = datetime('now') WHERE key = 'hero_video_position'"
+    ).bind(position).run();
+
+    return new Response(JSON.stringify({ success: true, active_video: r2Key, position: position }), {
       headers: { "Content-Type": "application/json" }
     });
 

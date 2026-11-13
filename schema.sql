@@ -35,4 +35,4 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO settings (key, value) VALUES ('hero_video_key', '');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('hero_video_position', '50% 50%');
