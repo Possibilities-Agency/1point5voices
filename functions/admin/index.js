@@ -262,7 +262,7 @@ export async function onRequestGet(context) {
       const targetBtn = btnEl || (window.event && window.event.target);
       if (targetBtn) targetBtn.classList.add('active');
       
-      if (id === 'analytics') {
+      if(id === 'analytics') {
         loadAnalytics();
       }
     }
@@ -482,7 +482,7 @@ export async function onRequestGet(context) {
     }
 
     function closeModal(event) {
-      if (event) event.preventDefault();
+      if(event) event.preventDefault();
       const modal = document.getElementById('mediaModal');
       const body = document.getElementById('modalBody');
       modal.classList.remove('active');
@@ -491,7 +491,7 @@ export async function onRequestGet(context) {
 
     async function loadPending(page = 1) {
       try {
-        const response = await fetch(\`/api/admin/moderate?page=\${page}\`);
+        const response = await fetch(\`/admin/moderate?page=\${page}\`);
         if (response.status === 401) {
           window.location.reload(); 
           return;
@@ -562,7 +562,7 @@ export async function onRequestGet(context) {
       row.style.opacity = '0.5';
       
       try {
-        const res = await fetch('/api/admin/moderate', {
+        const res = await fetch('/admin/moderate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, action })
