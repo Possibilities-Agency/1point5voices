@@ -23,49 +23,54 @@ export async function onRequestGet({ request, env, params, ctx }) {
 
     if (!record) return new Response("Media not found", { status: 404 });
 
-    // 3. Fetch from R2 
-    const object = await env.MEDIA.get(record.r2_key, {
-      range: request.headers,
-      onlyIf: request.headers
-    });
+    // 3. Parse the incoming Range header
+    const rangeHeader = request.headers.get("Range");
+    let r2Options = {};
+    
+    if (rangeHeader) {
+      // Browsers send ranges like: bytes=0-1024 or bytes=500-
+      const match = rangeHeader.match(/bytes=(\d+)-(.*)/);
+      if (match) {
+        r2Options.range = {
+          offset: parseInt(match[1], 10)
+        };
+        // If an end byte is specified, calculate the length
+        if (match[2]) {
+          r2Options.range.length = (parseInt(match[2], 10) - r2Options.range.offset) + 1;
+        }
+      }
+    }
+
+    // 4. Fetch from R2 with the properly formatted range object
+    const object = await env.MEDIA.get(record.r2_key, r2Options);
 
     if (object === null) return new Response("Media file not found in storage", { status: 404 });
 
-    // 4. Build the Response
+    // 5. Build the Response
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set("etag", object.httpEtag);
     headers.set("Content-Type", record.mime);
     headers.set("Cache-Control", "public, max-age=3600");
-    
-    // Explicitly tell the browser we support seeking
     headers.set("Accept-Ranges", "bytes");
 
-    // Check if the browser requested a range
-    const rangeHeader = request.headers.get("Range");
-    
     let status = 200;
 
-    // If R2 provided a range OR if the browser asked for one, we force a 206 response
+    // 6. Force 206 Partial Content if a range was processed
     if (object.range || rangeHeader) {
         status = 206;
-        
-        // If object.range exists, R2 handled it. If not, we still need to provide the Content-Range header
-        // to satisfy the browser's expectation for a 206 response.
         const start = object.range ? object.range.offset : 0;
         const end = object.range ? (object.range.offset + object.range.length - 1) : (object.size - 1);
         
         headers.set("Content-Range", `bytes ${start}-${end}/${object.size}`);
         headers.set("Content-Length", String(end - start + 1));
     } else {
-        // Standard 200 OK for full downloads (non-media player requests)
         headers.set("Content-Length", String(object.size));
     }
 
     response = new Response(object.body, { status, headers });
 
-    // 5. Store in Edge Cache (in the background)
-    // Only cache 200 OK responses to avoid fragmenting the cache with partial chunks
+    // Only cache full 200 OK responses
     if (status === 200) {
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
     }
