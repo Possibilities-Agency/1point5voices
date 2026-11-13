@@ -270,7 +270,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   height: 100%;
   object-fit: cover;
   /* object-position injected by JS */
-  opacity: 0.65; /* Base dimming before gradient overlay */
+  opacity: 0.35; /* Increased dimming (down from 0.65) */
   transition: opacity 0.4s ease;
 }
 
@@ -288,12 +288,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 */
 .hero.video-active .hero-vid-wrap {
   z-index: 3;
-  /* Remove the full absolute inset */
-  top: 72px; /* Matches the top padding of .hero */
+  top: 72px; 
   bottom: auto;
-  left: max(24px, calc((100vw - 1160px) / 2)); /* Aligns with the .wrap left edge */
-  width: calc(min(1160px, 100vw - 48px) * (1.25 / 2.15) - 24px); /* Exact width of the .h-intro column minus gap */
-  height: calc(100% - 100px); /* Fill the column height */
+  left: max(24px, calc((100vw - 1160px) / 2)); 
+  width: calc(min(1160px, 100vw - 48px) * (1.25 / 2.15) - 24px); 
+  height: calc(100% - 100px); 
   background: transparent;
   display: flex;
   align-items: center;
@@ -304,7 +303,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 .hero.video-active .hero-vid-wrap video {
   opacity: 1;
   object-fit: contain;
-  max-height: 85vh; /* Keep within viewport */
+  max-height: 85vh; 
   border-radius: 16px;
 }
 .hero.video-active .hero-vid-wrap::after {
@@ -349,6 +348,37 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   transform: translateY(-2px);
 }
 
+/* New Dedicated Close Button for Modal */
+.btn-close-modal {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(11, 27, 43, 0.6);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: none; /* Hidden by default */
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.btn-close-modal:hover {
+  background: rgba(11, 27, 43, 0.9);
+  transform: scale(1.05);
+}
+
+.hero.video-active .btn-close-modal {
+  display: flex; /* Show only when video is active */
+}
+
 /* Mobile rules for the active video modal */
 @media (max-width: 900px) {
   .hero.video-active .hero-vid-wrap {
@@ -365,5 +395,12 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   .hero.video-active .hero-vid-wrap video {
     max-height: 100vh;
     border-radius: 0;
+  }
+  
+  .btn-close-modal {
+    top: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
   }
 }
