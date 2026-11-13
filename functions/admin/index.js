@@ -28,6 +28,7 @@ export async function onRequestGet(context) {
     tr:last-child td { border-bottom: none; }
     .btn-approve { background: var(--reef); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; }
     .btn-reject { background: var(--heat); color: white; border: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; margin-left: 8px; }
+    .btn-media { background: transparent; color: var(--ocean); border: 1.5px solid var(--ocean); padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; cursor: pointer; }
     
     /* Pagination Styles */
     .pagination { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 14px; color: var(--muted); }
@@ -42,6 +43,15 @@ export async function onRequestGet(context) {
     .stat-label { font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
     .export-box { background: var(--sand); border-radius: 18px; padding: 30px; display: flex; justify-content: space-between; align-items: center; }
     .btn-export { background: var(--ocean); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; display: inline-block; }
+
+    /* Modal Styles */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(11, 27, 43, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; visibility: hidden; transition: opacity 0.2s; backdrop-filter: blur(4px); }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content { background: var(--paper); padding: 24px; border-radius: 18px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+    .modal-close { position: absolute; top: 12px; right: 16px; background: transparent; border: none; font-size: 24px; font-weight: bold; color: var(--muted); cursor: pointer; }
+    .modal-body { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+    .modal-body video { width: 100%; border-radius: 12px; background: #000; max-height: 400px; }
+    .modal-body audio { width: 100%; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -119,6 +129,15 @@ export async function onRequestGet(context) {
     </div>
   </div>
 
+  <!-- Media Review Modal -->
+  <div class="modal-overlay" id="mediaModal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal(event)">×</button>
+      <h3 style="margin-top: 0;">Review Pledge</h3>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
   <script>
     let currentPage = 1;
 
@@ -131,6 +150,30 @@ export async function onRequestGet(context) {
       if(id === 'analytics') {
         loadAnalytics();
       }
+    }
+
+    // Modal logic
+    function openModal(mediaId, kind) {
+      const modal = document.getElementById('mediaModal');
+      const body = document.getElementById('modalBody');
+      const mediaUrl = \`/api/media/\${mediaId}\`; // Corrected path to the public API
+      
+      if (kind === 'video') {
+        body.innerHTML = \`<video controls autoplay playsinline src="\${mediaUrl}"></video>\`;
+      } else {
+        body.innerHTML = \`<audio controls autoplay src="\${mediaUrl}"></audio>\`;
+      }
+      
+      modal.classList.add('active');
+    }
+
+    function closeModal(event) {
+      if(event) event.preventDefault();
+      const modal = document.getElementById('mediaModal');
+      const body = document.getElementById('modalBody');
+      modal.classList.remove('active');
+      // Clear the HTML to stop media playback instantly
+      setTimeout(() => { body.innerHTML = ''; }, 200); 
     }
 
     async function loadPending(page = 1) {
@@ -163,10 +206,10 @@ export async function onRequestGet(context) {
           const typeBg = item.kind ? '#e6f3ff' : '#f0f0f0';
           
           let mediaHtml = '<span style="color: var(--muted);">No message</span>';
-          if (item.kind === 'video') {
-             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\`;
-          } else if (item.kind === 'audio') {
-             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\`;
+          if (item.kind === 'video' && item.media_id) {
+             mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'video')">Watch Video</button>\`;
+          } else if (item.kind === 'audio' && item.media_id) {
+             mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'audio')">Listen to Audio</button>\`;
           } else if (item.message) {
              mediaHtml = \`"\${item.message}"\`;
           }
@@ -190,7 +233,6 @@ export async function onRequestGet(context) {
         document.getElementById('btn-prev').disabled = currentPage <= 1;
         document.getElementById('btn-next').disabled = !data.pagination.hasMore;
         
-        // Cache the pending total for the analytics tab
         window._pendingTotal = data.pagination.totalItems;
 
       } catch (e) {
@@ -230,7 +272,6 @@ export async function onRequestGet(context) {
 
     async function loadAnalytics() {
       try {
-        // Reuse the public API for the aggregate totals
         const res = await fetch('/api/stats');
         const data = await res.json();
         
