@@ -22,7 +22,6 @@
 <link rel="stylesheet" href="style.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-<script src="https://unpkg.com/fix-webm-duration"></script>
 </head>
 <body>
 
@@ -34,10 +33,7 @@
 <header class="hero">
   <!-- The new dynamic video background wrapper -->
   <div class="hero-vid-wrap" id="heroVidWrap">
-    <!-- The fallback image will show before JS loads the video, or if no video is active in D1 -->
     <video id="heroBgVid" autoplay loop muted playsinline poster="img/pm-mottley-speech.jpg"></video>
-    
-    <!-- New Dedicated Close Button (Hidden by default) -->
     <button type="button" class="btn-close-modal" id="btnSpeechClose" title="Close video">×</button>
   </div>
 
@@ -47,13 +43,11 @@
       <h1>1.5 billion voices<br>for <span class="hot">1.5 degrees.</span></h1>
       <p class="sub-methane"><b>Methane is the fastest brake we have.</b> Let us commit to reducing methane emissions to near zero.</p>
       <div class="leader">
-        <!-- We removed the static portrait to give the video maximum impact -->
         <div class="leader-txt">
           <div class="leader-k">Leading the call</div>
           <blockquote>“You may not have a vote in this hall, but you have a voice.”</blockquote>
           <div class="leader-who"><b>Hon. Mia Amor Mottley</b>Prime Minister of Barbados<br>Chair, Climate Vulnerable Forum and V20</div>
           
-          <!-- The trigger button -->
           <button type="button" class="btn-speech" id="btnSpeechPlay" style="display: none;">
              ▶ Listen to the speech
           </button>
@@ -242,7 +236,9 @@
     </div></div>
     <div class="faces"><figure class="face"><div class="ph"><img src="img/people-fisher.jpg" alt="A fisher in a life jacket coiling rope on a blue boat" loading="lazy" width="1080" height="1350"></div><figcaption><b>A fisher</b> whose living depends on the sea</figcaption></figure><figure class="face"><div class="ph"><img src="img/people-farmer.jpg" alt="A farmer kneeling among young lettuce plants" loading="lazy" width="1080" height="1350"></div><figcaption><b>A farmer</b> protecting their livelihood</figcaption></figure><figure class="face"><div class="ph"><img src="img/people-community.jpg" alt="A mother and daughter planting seedlings with neighbours on a street by the sea" loading="lazy" width="1080" height="1350"></div><figcaption><b>An island community</b> fighting for its home</figcaption></figure><figure class="face"><div class="ph"><img src="img/people-parent.jpg" alt="A mother smiling as her daughter does homework" loading="lazy" width="1080" height="1350"></div><figcaption><b>A parent</b> determined to leave something better behind</figcaption></figure></div>
     <p class="img-note">Farmer, community and parent images are illustrative.</p>
-    <div class="clips" id="clips" hidden><div class="sec-k" style="color:var(--label)">Hear the voices</div><div class="clips-grid" id="clipsGrid"></div></div>
+    
+    <!-- We removed the clipsGrid div to prevent the old loadClips() function from rendering -->
+    
     <div class="roles" id="roles"></div>
     <div class="wall" id="wall"><p class="empty">The wall fills as people sign. Yours could be the first message here.</p></div>
   </div>
@@ -266,7 +262,49 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Inject this right before the closing </body> tag -->
+<div class="public-modal-overlay" id="publicModal" onclick="closePublicModal(event)">
+  <div class="public-modal-content" onclick="event.stopPropagation()">
+    <button class="public-modal-close" onclick="closePublicModal(event)">×</button>
+    <div class="public-modal-body" id="publicModalBody"></div>
+    <div class="wall-meta" id="publicModalMeta" style="margin-top: 24px;"></div>
+  </div>
+</div>
+
 <script>
+  // Utility for escaping HTML
+  function esc(s) {
+    if(!s) return "";
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // --- Modal Logic (Now Global) ---
+  function openPublicModal(type, content, name, location, role) {
+    const modal = document.getElementById('publicModal');
+    const body = document.getElementById('publicModalBody');
+    const meta = document.getElementById('publicModalMeta');
+    
+    meta.innerHTML = `<strong>${esc(name)}</strong><br>${esc(location)} · ${esc(role)}`;
+    
+    if (type === 'text') {
+      body.innerHTML = `"${esc(content)}"`;
+    } else if (type === 'video') {
+      body.innerHTML = `<video controls autoplay playsinline src="/api/media/${content}"></video>`;
+    } else if (type === 'audio') {
+      body.innerHTML = `<audio controls autoplay src="/api/media/${content}"></audio>`;
+    }
+    
+    modal.classList.add('active');
+  }
+
+  function closePublicModal(e) {
+    if(e) e.preventDefault();
+    const modal = document.getElementById('publicModal');
+    const body = document.getElementById('publicModalBody');
+    modal.classList.remove('active');
+    setTimeout(() => { body.innerHTML = ''; }, 200); 
+  }
+
 (function(){
   const COUNTRIES = ["Barbados", "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Côte d'Ivoire", "Croatia", "Cuba", "Cyprus", "Czechia", "DR Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "São Tomé and Príncipe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Türkiye", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Anguilla", "Aruba", "Bermuda", "Bonaire, Sint Eustatius and Saba", "British Virgin Islands", "Cayman Islands", "Curaçao", "French Guiana", "Guadeloupe", "Martinique", "Montserrat", "Puerto Rico", "Saint Barthélemy", "Saint Martin (French part)", "Sint Maarten (Dutch part)", "Turks and Caicos Islands", "United States Virgin Islands", "American Samoa", "Cook Islands", "French Polynesia", "Guam", "New Caledonia", "Niue", "Northern Mariana Islands", "Pitcairn Islands", "Tokelau", "Wallis and Futuna", "Réunion", "Mayotte", "Saint Helena", "Falkland Islands (Malvinas)", "Saint Pierre and Miquelon", "Greenland", "Faroe Islands", "Gibraltar", "Isle of Man", "Jersey", "Guernsey", "Other"];
   const GOAL = 1500000000;
@@ -278,7 +316,6 @@
   let sigs = [];        // {first, country, role, msg, public, ts}
   let db = null, myId = null, demo = false;
 
-  const esc = s => String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove("show"),2400)}
   function status(t){const s=$("status");s.textContent=t;s.classList.toggle("show",!!t)}
 
@@ -304,7 +341,7 @@
     // We get randomized data from the backend. Just filter for public.
     const pub = sigs.filter(s=>s.public);
     
-   // 1. Populate the Ticker (All Submissions)
+    // 1. Populate the Ticker (All Submissions)
     const tickerContainer = $("ticker");
     if (tickerContainer && pub.length > 0) {
        tickerContainer.innerHTML = pub.map(s => {
@@ -352,10 +389,19 @@
         }
         else if (item.msg) {
           const safeMsg = esc(item.msg);
+          
+          // Check if message is long enough to likely overflow (e.g., > 120 chars)
+          const needsReadMore = item.msg.length > 120; 
+          
+          let buttonHtml = '';
+          if (needsReadMore) {
+            buttonHtml = `<button type="button" class="wall-btn" style="margin-top: 12px;" onclick="openPublicModal('text', \`${safeMsg.replace(/`/g, '&#96;')}\`, '${safeName}', '${safeLoc}', '${safeRole}')">Read More</button>`;
+          }
+
           cellInner = `
             <div class="wall-cell-content">
               <div class="wall-msg">"${safeMsg}"</div>
-              <button type="button" class="wall-btn" style="margin-top: 12px;" onclick="openPublicModal('text', \`${safeMsg.replace(/`/g, '&#96;')}\`, '${safeName}', '${safeLoc}', '${safeRole}')">Read More</button>
+              ${buttonHtml}
               <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
             </div>
           `;
@@ -364,6 +410,7 @@
         return '';
       }).join('');
     }
+
     // roles
     const counts = stats.roles;
     const roles = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
@@ -504,19 +551,8 @@
     const name = $("first").value.trim(), country = $("country").value && $("country").value !== "Other" ? $("country").value : "";
     const N = name ? esc(name) : "<b>your name</b>", C = country ? esc(country) : "<b>your country</b>";
     $("sbText").innerHTML = scriptVersion === "full"
-      ? `My name is ${N} and I'm speaking from ${C}.
-I'm adding my voice for the people I love,
-for the place I call home,
-and for the children who'll live with what we choose today.
-World leaders, act now.
-Cut methane. Protect lives.
-Keep one-point-five alive.
-Our future is worth fighting for.
-And I won't stay silent.`
-      : `I'm ${N}, from ${C}.
-For the people I love, and the children still to come:
-Cut methane. Protect lives. Keep one-point-five alive.
-I won't stay silent.`;
+      ? `My name is ${N} and I'm speaking from ${C}.\nI'm adding my voice for the people I love,\nfor the place I call home,\nand for the children who'll live with what we choose today.\nWorld leaders, act now.\nCut methane. Protect lives.\nKeep one-point-five alive.\nOur future is worth fighting for.\nAnd I won't stay silent.`
+      : `I'm ${N}, from ${C}.\nFor the people I love, and the children still to come:\nCut methane. Protect lives. Keep one-point-five alive.\nI won't stay silent.`;
   }
   document.querySelectorAll(".sbtab").forEach(b => b.addEventListener("click", () => {
     scriptVersion = b.dataset.v;
@@ -589,24 +625,8 @@ I won't stay silent.`;
     recorder.onstop = () => {
       clearInterval(recTimer); stopStream(); live.srcObject = null;
       const type = (recorder.mimeType || mime || (kind === "video" ? "video/webm" : "audio/webm")).split(";")[0];
-      
-      // Calculate the exact duration of the recording
-      const duration = Date.now() - t0; 
-      
-      const rawBlob = new Blob(chunks, { type });
-      
-      // Check if the library is loaded and it's a webm file
-      if (window.ysFixWebmDuration && type.includes('webm')) {
-          // Inject the duration metadata into the blob
-          window.ysFixWebmDuration(rawBlob, duration, function(fixedBlob) {
-              recBlob = fixedBlob;
-              showReview();
-          });
-      } else {
-          // Fallback if library fails to load or it's not a webm
-          recBlob = rawBlob;
-          showReview();
-      }
+      recBlob = new Blob(chunks, { type });
+      showReview();
     };
     const limit = kind === "video" ? 45 : 60;
     $("recMax").textContent = "of " + (kind === "video" ? "0:45" : "1:00");
@@ -682,43 +702,8 @@ I won't stay silent.`;
     else { recShow(recBlob ? "review" : "choose"); renderScript(); }
   }
   function setRecAvailable(on){ $("rec").hidden = !on; }
-  async function loadClips(){
-    if (PREVIEW) return;
-    try {
-      const r = await fetch("/api/media", { cache: "no-store" });
-      if (!r.ok) return;
-      const { items } = await r.json();
-      if (!items || !items.length) return;
-      $("clipsGrid").innerHTML = items.map(c => `<div class="clip">${c.kind === "video"
-        ? `<video controls playsinline preload="metadata" src="/api/media/${c.id}"></video>`
-        : `<audio controls preload="none" src="/api/media/${c.id}"></audio>`}<div class="nm">${esc(c.first)}</div><div class="meta">${esc(c.country)} · ${esc(c.role || "Citizen")}</div></div>`).join("");
-      $("clips").hidden = false;
-    } catch(e){}
-  }
 
-  document.querySelectorAll("[data-t]").forEach(b=>b.addEventListener("click",()=>{
-    $(b.dataset.t).classList.toggle("show");
-  }));
-  async function copyText(t){
-    try{ await navigator.clipboard.writeText(t); toast("Copied"); }
-    catch(e){ toast("Select the text to copy it"); }
-  }
-  document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",ev=>{
-    ev.stopPropagation();
-    const el = $(b.dataset.copy).cloneNode(true); el.querySelectorAll("button").forEach(x=>x.remove());
-    copyText(el.textContent.trim());
-  }));
-  $("anotherBtn").addEventListener("click",()=>{
-    try{ localStorage.removeItem("signed15"); localStorage.removeItem("pledgeToken"); }catch(e){}
-    uploadToken = ""; recBlob = null; pledgeSent = false; stopStream();
-    $("form").reset(); $("form").style.display = ""; $("thanks").classList.remove("show");
-    recMode("form"); $("rec").hidden = true; $("recToggle").hidden = false;
-    recShow("choose"); recMsg(""); $("recPlayWrap").innerHTML = ""; renderScript();
-    $("sign").scrollIntoView({behavior:"smooth"}); $("first").focus();
-  });
-  $("shareBtn").addEventListener("click",()=>copyText(location.href.split("#")[0]));
-
-// --- Hero Video Logic ---
+  // --- Hero Video Logic ---
   async function initHeroVideo() {
     try {
       const res = await fetch('/api/media/hero', { method: 'HEAD' });
@@ -759,141 +744,38 @@ I won't stay silent.`;
   
   initHeroVideo();
 
+  document.querySelectorAll("[data-t]").forEach(b=>b.addEventListener("click",()=>{
+    $(b.dataset.t).classList.toggle("show");
+  }));
+  async function copyText(t){
+    try{ await navigator.clipboard.writeText(t); toast("Copied"); }
+    catch(e){ toast("Select the text to copy it"); }
+  }
+  document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",ev=>{
+    ev.stopPropagation();
+    const el = $(b.dataset.copy).cloneNode(true); el.querySelectorAll("button").forEach(x=>x.remove());
+    copyText(el.textContent.trim());
+  }));
+  $("anotherBtn").addEventListener("click",()=>{
+    try{ localStorage.removeItem("signed15"); localStorage.removeItem("pledgeToken"); }catch(e){}
+    uploadToken = ""; recBlob = null; pledgeSent = false; stopStream();
+    $("form").reset(); $("form").style.display = ""; $("thanks").classList.remove("show");
+    recMode("form"); $("rec").hidden = true; $("recToggle").hidden = false;
+    recShow("choose"); recMsg(""); $("recPlayWrap").innerHTML = ""; renderScript();
+    $("sign").scrollIntoView({behavior:"smooth"}); $("first").focus();
+  });
+  $("shareBtn").addEventListener("click",()=>copyText(location.href.split("#")[0]));
+
   if (window.d3 && window.topojson) initMap(); else window.addEventListener("DOMContentLoaded", initMap);
   render();
   recShow("choose"); recMode("form"); renderScript();
   let signedBefore = false; try{ signedBefore = !!localStorage.getItem("signed15"); }catch(e){}
   if (signedBefore) { setSigned(); recMode("after"); $("recToggle").hidden = true; setRecAvailable(!!uploadToken); }
   loadStats();
-  loadClips();
+  
+  // Set interval to 5 minutes to prevent hitting database limits
   setInterval(loadStats, 300000);
 })();
-</script>
-
-<!-- Inject this right before the closing </body> tag -->
-<div class="public-modal-overlay" id="publicModal" onclick="closePublicModal(event)">
-  <div class="public-modal-content" onclick="event.stopPropagation()">
-    <button class="public-modal-close" onclick="closePublicModal(event)">×</button>
-    <div class="public-modal-body" id="publicModalBody"></div>
-    <div class="wall-meta" id="publicModalMeta" style="margin-top: 24px;"></div>
-  </div>
-</div>
-
-<script>
-  // Utility for escaping HTML
-  function esc(s) {
-    if(!s) return "";
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // --- Modal Logic ---
-  function openPublicModal(type, content, name, location, role) {
-    const modal = document.getElementById('publicModal');
-    const body = document.getElementById('publicModalBody');
-    const meta = document.getElementById('publicModalMeta');
-    
-    meta.innerHTML = `<strong>${esc(name)}</strong><br>${esc(location)} · ${esc(role)}`;
-    
-    if (type === 'text') {
-      body.innerHTML = `"${esc(content)}"`;
-    } else if (type === 'video') {
-      body.innerHTML = `<video controls autoplay playsinline src="/api/media/${content}"></video>`;
-    } else if (type === 'audio') {
-      body.innerHTML = `<audio controls autoplay src="/api/media/${content}"></audio>`;
-    }
-    
-    modal.classList.add('active');
-  }
-
-  function closePublicModal(e) {
-    if(e) e.preventDefault();
-    const modal = document.getElementById('publicModal');
-    const body = document.getElementById('publicModalBody');
-    modal.classList.remove('active');
-    setTimeout(() => { body.innerHTML = ''; }, 200); // clear media to stop playback
-  }
-
-  // --- Fetch and Build Wall ---
-  async function loadWallAndTicker() {
-    try {
-      const res = await fetch('/api/stats');
-      const data = await res.json();
-      
-      const signatures = data.recent || [];
-      if (signatures.length === 0) return;
-
-      /// 1. Populate the Ticker (All Submissions)
-    const tickerContainer = $("ticker");
-    if (tickerContainer && pub.length > 0) {
-       tickerContainer.innerHTML = pub.map(s => {
-         const roleText = (s.role && s.role !== "Citizen") 
-           ? ` as ${esc(s.role.toLowerCase() === "athlete" ? "an athlete" : "a" + (/^[aeiou]/i.test(s.role) ? "n " : " ") + s.role.toLowerCase())}` 
-           : "";
-         return `<span class="tick-item"><strong>${esc(s.first)}</strong> from ${esc(s.country)} added their voice${roleText}</span>`;
-       }).join('<span class="tick-sep" style="margin: 0 44px;">·</span>');
-    }
-      }
-
-      // 2. Filter for the Wall (Only items with content: Text, Video, or Audio)
-      const wallItems = signatures.filter(s => s.msg || s.kind === 'video' || s.kind === 'audio');
-      
-      // We only want to display a 3x3 grid, so slice the top 9
-      const gridItems = wallItems.slice(0, 9);
-      const wallContainer = document.getElementById('wall'); // Assuming your wall div has this ID
-      
-      if (wallContainer && gridItems.length > 0) {
-        wallContainer.innerHTML = gridItems.map(item => {
-          
-          let cellInner = '';
-          const safeName = esc(item.first);
-          const safeLoc = esc(item.country);
-          const safeRole = esc(item.role);
-
-          if (item.kind === 'video') {
-            cellInner = `
-              <video class="wall-cell-video-bg" autoplay loop muted playsinline src="/api/media/${item.media_id}"></video>
-              <div class="wall-cell-content">
-                <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
-                <button class="wall-btn" onclick="openPublicModal('video', '${item.media_id}', '${safeName}', '${safeLoc}', '${safeRole}')">▶ Watch</button>
-              </div>
-            `;
-            return `<div class="wall-cell has-video">${cellInner}</div>`;
-          } 
-          
-          else if (item.kind === 'audio') {
-             cellInner = `
-              <div class="wall-cell-content">
-                <div class="wall-msg" style="font-style: italic; color: var(--ocean);">Audio Message Attached</div>
-                <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
-                <button class="wall-btn" style="margin-top: 16px;" onclick="openPublicModal('audio', '${item.media_id}', '${safeName}', '${safeLoc}', '${safeRole}')">🔊 Listen</button>
-              </div>
-            `;
-            return `<div class="wall-cell">${cellInner}</div>`;
-          }
-          
-          else {
-            // Text only
-            const safeMsg = esc(item.msg);
-            cellInner = `
-              <div class="wall-cell-content">
-                <div class="wall-msg">"${safeMsg}"</div>
-                <button class="wall-btn" style="margin-top: 12px;" onclick="openPublicModal('text', \`${safeMsg}\`, '${safeName}', '${safeLoc}', '${safeRole}')">Read More</button>
-                <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
-              </div>
-            `;
-            return `<div class="wall-cell">${cellInner}</div>`;
-          }
-          
-        }).join('');
-      }
-
-    } catch (e) {
-      console.error("Failed to load wall:", e);
-    }
-  }
-
-  // Call the function when the script runs
-  loadWallAndTicker();
 </script>
 </body>
 </html>
