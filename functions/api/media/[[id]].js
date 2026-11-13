@@ -53,4 +53,26 @@ export async function onRequestGet({ request, env, params, ctx }) {
         // If object.range exists, R2 handled it. If not, we still need to provide the Content-Range header
         // to satisfy the browser's expectation for a 206 response.
         const start = object.range ? object.range.offset : 0;
-        const end = object.range ? (object.range.offset + object.
+        const end = object.range ? (object.range.offset + object.range.length - 1) : (object.size - 1);
+        
+        headers.set("Content-Range", `bytes ${start}-${end}/${object.size}`);
+        headers.set("Content-Length", String(end - start + 1));
+    } else {
+        // Standard 200 OK for full downloads (non-media player requests)
+        headers.set("Content-Length", String(object.size));
+    }
+
+    response = new Response(object.body, { status, headers });
+
+    // 5. Store in Edge Cache (in the background)
+    // Only cache 200 OK responses to avoid fragmenting the cache with partial chunks
+    if (status === 200) {
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+    }
+
+    return response;
+
+  } catch (error) {
+    return new Response(`Error: ${error.message}`, { status: 500 });
+  }
+}
