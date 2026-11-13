@@ -34,6 +34,14 @@ export async function onRequestGet(context) {
     .page-controls { display: flex; gap: 10px; }
     .btn-page { background: var(--sand); color: var(--ink); border: 1px solid var(--line); padding: 6px 16px; border-radius: 999px; font-weight: 600; cursor: pointer; }
     .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Analytics Styles */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+    .stat-box { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 24px; text-align: center; }
+    .stat-num { font-size: 36px; font-weight: 700; margin-bottom: 8px; color: var(--ink); font-family: 'Anton', sans-serif; }
+    .stat-label { font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .export-box { background: var(--sand); border-radius: 18px; padding: 30px; display: flex; justify-content: space-between; align-items: center; }
+    .btn-export { background: var(--ocean); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; display: inline-block; }
   </style>
 </head>
 <body>
@@ -84,7 +92,30 @@ export async function onRequestGet(context) {
 
     <div id="analytics" class="panel">
       <h2 style="margin-bottom: 8px;">Signature Analytics</h2>
-      <p style="color: var(--muted);">Data export and analytics features coming soon.</p>
+      <p style="color: var(--muted); margin-bottom: 24px;">Overview of the campaign's progress.</p>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-num" id="stat-total">...</div>
+          <div class="stat-label">Total Signatures</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-countries">...</div>
+          <div class="stat-label">Countries Represented</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-pending">...</div>
+          <div class="stat-label">Pending Approval</div>
+        </div>
+      </div>
+
+      <div class="export-box">
+        <div>
+          <h3 style="margin-bottom: 8px;">Export Campaign Data</h3>
+          <p style="color: var(--muted); margin: 0; font-size: 14px;">Download a complete CSV of all signatures (excluding rejected items).</p>
+        </div>
+        <a href="/admin/export" class="btn-export" target="_blank">Download CSV</a>
+      </div>
     </div>
   </div>
 
@@ -96,6 +127,10 @@ export async function onRequestGet(context) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       event.target.classList.add('active');
+      
+      if(id === 'analytics') {
+        loadAnalytics();
+      }
     }
 
     async function loadPending(page = 1) {
@@ -129,32 +164,34 @@ export async function onRequestGet(context) {
           
           let mediaHtml = '<span style="color: var(--muted);">No message</span>';
           if (item.kind === 'video') {
-             mediaHtml = \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\`;
+             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Watch Video ↗</a>\`;
           } else if (item.kind === 'audio') {
-             mediaHtml = \`<a href="/api/media/\${item.id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\`;
+             mediaHtml = \`<a href="/api/media/\${item.media_id}" target="_blank" style="color: var(--ocean); font-weight: bold;">Listen ↗</a>\`;
           } else if (item.message) {
              mediaHtml = \`"\${item.message}"\`;
           }
 
           return \`
-          <tr id="row-\${item.id}">
+          <tr id="row-\${item.sig_id}">
             <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
             <td>\${item.country || 'Unknown'}</td>
             <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${typeLabel}</span></td>
             <td>\${mediaHtml}</td>
             <td>
-              <button class="btn-approve" onclick="moderate(\${item.id}, 'approve')">Approve</button>
-              <button class="btn-reject" onclick="moderate(\${item.id}, 'reject')">Reject</button>
+              <button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>
+              <button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>
             </td>
           </tr>
           \`;
         }).join('');
 
-        // Update Pagination UI
         currentPage = data.pagination.currentPage;
         document.getElementById('page-info').innerHTML = \`Showing page \${currentPage} of \${data.pagination.totalPages} (\${data.pagination.totalItems} total pending)\`;
         document.getElementById('btn-prev').disabled = currentPage <= 1;
         document.getElementById('btn-next').disabled = !data.pagination.hasMore;
+        
+        // Cache the pending total for the analytics tab
+        window._pendingTotal = data.pagination.totalItems;
 
       } catch (e) {
         document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items. Check the network tab.</td></tr>';
@@ -178,7 +215,6 @@ export async function onRequestGet(context) {
         
         if (res.ok) {
           row.remove();
-          // If the page is emptied, refresh to load the next batch automatically
           if (document.getElementById('media-list').children.length === 0) {
             loadPending(currentPage);
           }
@@ -189,6 +225,20 @@ export async function onRequestGet(context) {
       } catch (e) {
         row.style.opacity = '1';
         alert('An error occurred.');
+      }
+    }
+
+    async function loadAnalytics() {
+      try {
+        // Reuse the public API for the aggregate totals
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        
+        document.getElementById('stat-total').innerText = data.total.toLocaleString();
+        document.getElementById('stat-countries').innerText = Object.keys(data.countries).length;
+        document.getElementById('stat-pending').innerText = window._pendingTotal || "0";
+      } catch (e) {
+        console.error("Failed to load analytics");
       }
     }
 
