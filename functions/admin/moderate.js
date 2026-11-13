@@ -28,9 +28,10 @@ export async function onRequest(context) {
       const totalItems = countResult.total;
       const totalPages = Math.ceil(totalItems / limit);
 
-      // Fetch the specific page of data
+// Fetch the specific page of data
       const { results } = await env.DB.prepare(
-        `SELECT m.id, m.kind, m.mime, s.first_name, s.country, s.role
+        `SELECT m.id AS media_id, m.signature_id AS sig_id, m.kind, m.mime, 
+                s.first_name, s.country, s.role, s.message 
          FROM media m
          JOIN signatures s ON m.signature_id = s.id
          WHERE m.status = 'pending'
