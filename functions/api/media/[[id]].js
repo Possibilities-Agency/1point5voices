@@ -4,7 +4,9 @@ export async function onRequestGet({ request, env, params, ctx }) {
   try {
     const id = params.id ? params.id[0] : null;
     if (!id) return new Response("Media ID required", { status: 400 });
-    if (!env.DB || !env.MEDIA_BUCKET) return new Response("Bindings missing", { status: 500 });
+    
+    // Updated to use env.MEDIA to match your Cloudflare R2 binding
+    if (!env.DB || !env.MEDIA) return new Response("Bindings missing", { status: 500 });
 
     // 1. Check Cloudflare Edge Cache first
     const cacheUrl = new URL(request.url);
@@ -23,9 +25,8 @@ export async function onRequestGet({ request, env, params, ctx }) {
 
     if (!record) return new Response("Media not found", { status: 404 });
 
-    // 3. Fetch from R2 
-    // We pass the incoming headers so R2 natively handles the Range requests!
-    const object = await env.MEDIA_BUCKET.get(record.r2_key, {
+    // 3. Fetch from R2 using the correct env.MEDIA binding
+    const object = await env.MEDIA.get(record.r2_key, {
       range: request.headers,
       onlyIf: request.headers
     });
@@ -54,7 +55,6 @@ export async function onRequestGet({ request, env, params, ctx }) {
     response = new Response(object.body, { status, headers });
 
     // 5. Store in Edge Cache (in the background)
-    // We only cache full 200 OK responses to avoid fragmenting the cache
     if (status === 200) {
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
     }
