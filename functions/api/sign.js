@@ -1,7 +1,4 @@
-// POST /api/sign  — add one signature
-// Bindings (set in Cloudflare dashboard → your Pages project → Settings → Bindings):
-//   DB               D1 database
-//   TURNSTILE_SECRET Turnstile secret key, as an encrypted variable
+// functions/api/sign.js
 
 const ROLES = new Set(["Citizen","Young person","Artist","Athlete","Faith leader","Business leader",
   "Parent","Farmer","Entrepreneur","Educator","Scientist","Elected official"]);
@@ -57,7 +54,7 @@ export async function onRequestPost({ request, env }) {
   try {
     await env.DB.prepare(
       "INSERT INTO signatures (first_name, email, country, role, message, is_public, updates, upload_token) VALUES (?,?,?,?,?,?,?,?)"
-    ).bind(first, email, country, role, msg || null, b.public ? 1 : 0, b.updates ? 1 : 0, uploadToken).run();
+    ).bind(first, email, country, role, msg || null, b.public ? 0 : -1, b.updates ? 1 : 0, uploadToken).run();
   } catch (e) {
     if (String(e).includes("UNIQUE")) return json({ error: "Already signed" }, 409);
     return json({ error: "Could not save" }, 500);
