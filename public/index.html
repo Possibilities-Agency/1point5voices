@@ -715,5 +715,127 @@ I won't stay silent.`;
   setInterval(loadStats, 30000);
 })();
 </script>
+
+<!-- Inject this right before the closing </body> tag -->
+<div class="public-modal-overlay" id="publicModal" onclick="closePublicModal(event)">
+  <div class="public-modal-content" onclick="event.stopPropagation()">
+    <button class="public-modal-close" onclick="closePublicModal(event)">×</button>
+    <div class="public-modal-body" id="publicModalBody"></div>
+    <div class="wall-meta" id="publicModalMeta" style="margin-top: 24px;"></div>
+  </div>
+</div>
+
+<script>
+  // Utility for escaping HTML
+  function esc(s) {
+    if(!s) return "";
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // --- Modal Logic ---
+  function openPublicModal(type, content, name, location, role) {
+    const modal = document.getElementById('publicModal');
+    const body = document.getElementById('publicModalBody');
+    const meta = document.getElementById('publicModalMeta');
+    
+    meta.innerHTML = `<strong>${esc(name)}</strong><br>${esc(location)} · ${esc(role)}`;
+    
+    if (type === 'text') {
+      body.innerHTML = `"${esc(content)}"`;
+    } else if (type === 'video') {
+      body.innerHTML = `<video controls autoplay playsinline src="/api/media/${content}"></video>`;
+    } else if (type === 'audio') {
+      body.innerHTML = `<audio controls autoplay src="/api/media/${content}"></audio>`;
+    }
+    
+    modal.classList.add('active');
+  }
+
+  function closePublicModal(e) {
+    if(e) e.preventDefault();
+    const modal = document.getElementById('publicModal');
+    const body = document.getElementById('publicModalBody');
+    modal.classList.remove('active');
+    setTimeout(() => { body.innerHTML = ''; }, 200); // clear media to stop playback
+  }
+
+  // --- Fetch and Build Wall ---
+  async function loadWallAndTicker() {
+    try {
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      
+      const signatures = data.recent || [];
+      if (signatures.length === 0) return;
+
+      // 1. Populate the Ticker (All Submissions)
+      const tickerContainer = document.getElementById('ticker'); // Assuming your ticker div has this ID
+      if (tickerContainer) {
+         tickerContainer.innerHTML = signatures.map(s => 
+           `<span class="tick-item"><strong>${esc(s.first)}</strong> from ${esc(s.country)}</span>`
+         ).join('<span class="tick-sep">·</span>');
+      }
+
+      // 2. Filter for the Wall (Only items with content: Text, Video, or Audio)
+      const wallItems = signatures.filter(s => s.msg || s.kind === 'video' || s.kind === 'audio');
+      
+      // We only want to display a 3x3 grid, so slice the top 9
+      const gridItems = wallItems.slice(0, 9);
+      const wallContainer = document.getElementById('wall'); // Assuming your wall div has this ID
+      
+      if (wallContainer && gridItems.length > 0) {
+        wallContainer.innerHTML = gridItems.map(item => {
+          
+          let cellInner = '';
+          const safeName = esc(item.first);
+          const safeLoc = esc(item.country);
+          const safeRole = esc(item.role);
+
+          if (item.kind === 'video') {
+            cellInner = `
+              <video class="wall-cell-video-bg" autoplay loop muted playsinline src="/api/media/${item.media_id}"></video>
+              <div class="wall-cell-content">
+                <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
+                <button class="wall-btn" onclick="openPublicModal('video', '${item.media_id}', '${safeName}', '${safeLoc}', '${safeRole}')">▶ Watch</button>
+              </div>
+            `;
+            return `<div class="wall-cell has-video">${cellInner}</div>`;
+          } 
+          
+          else if (item.kind === 'audio') {
+             cellInner = `
+              <div class="wall-cell-content">
+                <div class="wall-msg" style="font-style: italic; color: var(--ocean);">Audio Message Attached</div>
+                <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
+                <button class="wall-btn" style="margin-top: 16px;" onclick="openPublicModal('audio', '${item.media_id}', '${safeName}', '${safeLoc}', '${safeRole}')">🔊 Listen</button>
+              </div>
+            `;
+            return `<div class="wall-cell">${cellInner}</div>`;
+          }
+          
+          else {
+            // Text only
+            const safeMsg = esc(item.msg);
+            cellInner = `
+              <div class="wall-cell-content">
+                <div class="wall-msg">"${safeMsg}"</div>
+                <button class="wall-btn" style="margin-top: 12px;" onclick="openPublicModal('text', \`${safeMsg}\`, '${safeName}', '${safeLoc}', '${safeRole}')">Read More</button>
+                <div class="wall-meta"><strong>${safeName}</strong><br>${safeLoc}</div>
+              </div>
+            `;
+            return `<div class="wall-cell">${cellInner}</div>`;
+          }
+          
+        }).join('');
+      }
+
+    } catch (e) {
+      console.error("Failed to load wall:", e);
+    }
+  }
+
+  // Call the function when the script runs
+  loadWallAndTicker();
+</script>
 </body>
 </html>
