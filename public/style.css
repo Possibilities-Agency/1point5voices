@@ -237,16 +237,31 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   .row2{grid-template-columns:1fr}
   section{padding:64px 0}
 }
-
 /* --- Hero Video Takeover Styles --- */
 
 /* The background video wrapper */
 .hero-vid-wrap {
   position: absolute;
   inset: 0;
-  z-index: 0; /* Sits behind the text */
+  z-index: 0;
   overflow: hidden;
-  background: var(--ink);
+  background: var(--deep); /* Base fallback color */
+  transition: all 0.4s ease;
+}
+
+/* 
+  Recreate the original .hero radial gradients as an overlay ON TOP of the video.
+  This dims the video and restores the exact original text contrast.
+*/
+.hero-vid-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(1200px 600px at 85% -10%, rgba(255, 90, 54, 0.45), transparent 60%), 
+              radial-gradient(900px 500px at -10% 110%, rgba(31, 181, 154, 0.25), transparent 60%);
+  z-index: 1;
+  transition: opacity 0.4s ease;
 }
 
 /* The actual video element */
@@ -254,43 +269,53 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* object-position will be dynamically injected by JS based on Admin crop settings */
-  opacity: 0.85; /* Slight dimming so text remains legible */
-  transition: opacity 0.5s ease;
+  /* object-position injected by JS */
+  opacity: 0.65; /* Base dimming before gradient overlay */
+  transition: opacity 0.4s ease;
 }
 
-/* Ensure existing hero content sits above the video */
+/* Ensure existing hero content sits above the background */
 .hero > .wrap {
   position: relative;
   z-index: 2;
 }
 
+/* --- Active Modal State --- */
+
 /* 
   When the "Listen to the speech" button is clicked, 
-  the .video-active class is added to the .hero container 
+  we transform the absolute background wrapper into a grid-aligned left column modal.
 */
 .hero.video-active .hero-vid-wrap {
-  z-index: 3; /* Brings the video layer above the text but keeps the form visible */
+  z-index: 3;
+  /* Remove the full absolute inset */
+  top: 72px; /* Matches the top padding of .hero */
+  bottom: auto;
+  left: max(24px, calc((100vw - 1160px) / 2)); /* Aligns with the .wrap left edge */
+  width: calc(min(1160px, 100vw - 48px) * (1.25 / 2.15) - 24px); /* Exact width of the .h-intro column minus gap */
+  height: calc(100% - 100px); /* Fill the column height */
+  background: transparent;
   display: flex;
   align-items: center;
-  justify-content: flex-start; /* Aligns video to the left side on desktop */
+  border-radius: 16px;
 }
 
-/* Remove the dimming so the speech plays brightly */
+/* Remove the dimming and gradient overlay so the speech plays brightly */
 .hero.video-active .hero-vid-wrap video {
-  opacity: 1; 
-  object-fit: contain; 
-  /* Bound the height so it doesn't break out of the viewport on desktop */
-  max-height: 85vh; 
-  width: 60%; /* Prevents the video from overlapping the form on the right */
-  margin-left: max(0px, calc((100vw - 1160px) / 2)); /* Keeps left alignment consistent with the .wrap */
+  opacity: 1;
+  object-fit: contain;
+  max-height: 85vh; /* Keep within viewport */
+  border-radius: 16px;
+}
+.hero.video-active .hero-vid-wrap::after {
+  opacity: 0; 
 }
 
 /* Fade out the text when watching the video */
 .hero.video-active .h-intro,
 .hero.video-active .h-body {
   opacity: 0;
-  pointer-events: none; /* Prevents invisible text from blocking video clicks */
+  pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
@@ -324,24 +349,21 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   transform: translateY(-2px);
 }
 
-/* 
-  Mobile specific rules for the active video modal 
-*/
+/* Mobile rules for the active video modal */
 @media (max-width: 900px) {
-  /* On mobile, the active video should completely cover the screen, 
-     hiding the form until the user closes the video */
   .hero.video-active .hero-vid-wrap {
     position: fixed;
     inset: 0;
+    width: 100%;
+    height: 100%;
     z-index: 100;
     background: rgba(11, 27, 43, 0.95);
     backdrop-filter: blur(8px);
-    justify-content: center; /* Center horizontally on mobile */
+    border-radius: 0;
   }
   
   .hero.video-active .hero-vid-wrap video {
-    width: 100%;
     max-height: 100vh;
-    margin-left: 0; /* Reset margins for center alignment */
+    border-radius: 0;
   }
 }
