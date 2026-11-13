@@ -14,12 +14,22 @@ export async function onRequestGet({ request, env, ctx }) {
       return response;
     }
 
-    // 2. Look up the active hero video key in D1
-    const setting = await env.DB.prepare(
-      "SELECT value FROM settings WHERE key = 'hero_video_key'"
-    ).first();
+    // 2. Look up the active hero video key AND the crop position in D1
+    const settings = await env.DB.prepare(
+      "SELECT key, value FROM settings WHERE key IN ('hero_video_key', 'hero_video_position')"
+    ).all();
+    
+    let activeKey = "";
+    let activePosition = "50% 50%";
+    
+    if (settings && settings.results) {
+        settings.results.forEach(row => {
+            if (row.key === 'hero_video_key') activeKey = row.value;
+            if (row.key === 'hero_video_position') activePosition = row.value;
+        });
+    }
 
-    if (!setting || !setting.value) return new Response("No hero video active", { status: 404 });
+    if (!activeKey) return new Response("No hero video active", { status: 404 });
 
     // 3. Parse the incoming Range header for scrubbing/seeking
     const rangeHeader = request.headers.get("Range");
@@ -38,7 +48,7 @@ export async function onRequestGet({ request, env, ctx }) {
     }
 
     // 4. Fetch from R2 with the properly formatted range object
-    const object = await env.MEDIA.get(setting.value, r2Options);
+    const object = await env.MEDIA.get(activeKey, r2Options);
 
     if (object === null) return new Response("Video file not found in storage", { status: 404 });
 
@@ -49,6 +59,7 @@ export async function onRequestGet({ request, env, ctx }) {
     headers.set("Content-Type", object.httpMetadata?.contentType || "video/mp4");
     headers.set("Cache-Control", "public, max-age=3600");
     headers.set("Accept-Ranges", "bytes");
+    headers.set("X-Hero-Position", activePosition); // Expose the mobile crop to CSS
 
     let status = 200;
 
