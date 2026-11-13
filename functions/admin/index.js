@@ -6,15 +6,20 @@ export async function onRequestGet(context) {
   const match = cookieHeader.match(/admin_session=([^;]+)/);
   const userEmail = match ? decodeURIComponent(match[1]) : "Admin";
 
-  // Fetch the currently active hero video key from D1
+  // Fetch the active hero video key and position from D1
   let activeHeroVideo = "";
+  let activeHeroPosition = "50% 50%";
   if (env.DB) {
     try {
-      const setting = await env.DB.prepare(
-        "SELECT value FROM settings WHERE key = 'hero_video_key'"
-      ).first();
-      if (setting && setting.value) {
-        activeHeroVideo = setting.value;
+      const settings = await env.DB.prepare(
+        "SELECT key, value FROM settings WHERE key IN ('hero_video_key', 'hero_video_position')"
+      ).all();
+      
+      if (settings && settings.results) {
+        settings.results.forEach(row => {
+          if (row.key === 'hero_video_key') activeHeroVideo = row.value;
+          if (row.key === 'hero_video_position') activeHeroPosition = row.value;
+        });
       }
     } catch (e) {
       // Table check fallback
@@ -63,11 +68,31 @@ export async function onRequestGet(context) {
     /* Hero Media Upload Styles */
     .hero-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 30px; }
     .active-video-banner { background: var(--sand); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-    .upload-form-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
-    .file-picker { flex: 1; min-width: 240px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--paper); font-family: inherit; font-size: 14px; }
-    .btn-upload { background: var(--ink); color: #fff; border: none; padding: 14px 28px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; }
+    
+    .drop-zone { border: 2px dashed var(--line); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--paper); }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--ocean); background: #f0f7ff; }
+    .drop-zone-icon { font-size: 32px; margin-bottom: 12px; color: var(--muted); }
+    .drop-zone-text { font-size: 16px; font-weight: 600; color: var(--ink); }
+    .drop-zone-sub { font-size: 14px; color: var(--muted); margin-top: 4px; }
+    
+    .preview-ui { display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-top: 20px; text-align: center; }
+    .preview-header { font-weight: 700; font-size: 18px; margin-bottom: 8px; }
+    .preview-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+    
+    .mobile-preview-box { width: 100%; max-width: 260px; aspect-ratio: 9/16; margin: 0 auto 24px; border-radius: 16px; overflow: hidden; border: 4px solid var(--ink); box-shadow: 0 10px 30px rgba(0,0,0,0.15); background: #000; }
+    .mobile-preview-box video { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; pointer-events: none; }
+    
+    .slider-wrap { margin-bottom: 24px; display: flex; flex-direction: column; align-items: center; }
+    .slider-wrap label { font-weight: 600; font-size: 14px; margin-bottom: 12px; color: var(--ink); }
+    .slider-wrap input[type=range] { width: 100%; max-width: 320px; cursor: pointer; }
+    
+    .btn-upload { background: var(--ink); color: #fff; border: none; padding: 14px 32px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; }
     .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
-    .upload-status { margin-top: 16px; font-size: 14px; font-weight: 600; }
+    .btn-cancel { background: transparent; color: var(--muted); border: none; font-weight: 600; font-size: 14px; cursor: pointer; margin-left: 16px; }
+    
+    .progress-wrap { width: 100%; max-width: 400px; height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 20px auto 0; display: none; }
+    .progress-bar { width: 0%; height: 100%; background: var(--ocean); transition: width 0.1s linear; }
+    .upload-status { margin-top: 12px; font-size: 14px; font-weight: 600; }
 
     /* Modal Styles */
     .modal-overlay { position: fixed; inset: 0; background: rgba(11, 27, 43, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; visibility: hidden; transition: opacity 0.2s; backdrop-filter: blur(4px); }
@@ -165,15 +190,41 @@ export async function onRequestGet(context) {
             <div id="active-video-label" style="font-weight: 600; margin-top: 4px; color: var(--ink);">
               ${activeHeroVideo ? activeHeroVideo : "No hero video set yet"}
             </div>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+              Mobile Focus: <span id="active-position-label">${activeHeroPosition}</span>
+            </div>
           </div>
         </div>
 
-        <label for="hero-video-file" style="font-weight: 700; font-size: 14px; display: block;">Select New Video File (MP4 recommended)</label>
-        <div class="upload-form-row">
-          <input type="file" id="hero-video-file" class="file-picker" accept="video/mp4,video/webm,video/*">
-          <button id="btn-hero-upload" class="btn-upload" onclick="uploadHeroVideo()">Upload & Set Active</button>
+        <input type="file" id="hero-video-file" accept="video/mp4,video/webm,video/*" style="display: none;">
+        
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-zone-icon">📥</div>
+          <div class="drop-zone-text">Drag & drop your landscape video here</div>
+          <div class="drop-zone-sub">or click to browse your files (MP4 recommended)</div>
         </div>
-        <div id="hero-upload-status" class="upload-status"></div>
+
+        <div class="preview-ui" id="preview-ui">
+          <div class="preview-header">Target Mobile Crop</div>
+          <div class="preview-sub">Slide to frame the subject for vertical mobile screens. Desktop users will see the full width.</div>
+          
+          <div class="mobile-preview-box">
+            <video id="preview-vid" autoplay loop muted playsinline></video>
+          </div>
+
+          <div class="slider-wrap">
+            <label>Crop Focus: <span id="slider-val">50%</span></label>
+            <input type="range" id="crop-slider" min="0" max="100" value="50">
+          </div>
+
+          <button id="btn-hero-upload" class="btn-upload" onclick="uploadHeroVideo()">Upload & Set Active</button>
+          <button class="btn-cancel" onclick="resetUploadUI()">Cancel</button>
+
+          <div class="progress-wrap" id="progress-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <div id="hero-upload-status" class="upload-status"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -201,51 +252,137 @@ export async function onRequestGet(context) {
       }
     }
 
-    async function uploadHeroVideo() {
-      const fileInput = document.getElementById('hero-video-file');
+    // Drag and Drop & Targeting UI Logic
+    let selectedFile = null;
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('hero-video-file');
+    const previewUI = document.getElementById('preview-ui');
+    const previewVid = document.getElementById('preview-vid');
+    const cropSlider = document.getElementById('crop-slider');
+    const sliderVal = document.getElementById('slider-val');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect();
+      }
+    });
+
+    fileInput.addEventListener('change', handleFileSelect);
+
+    function handleFileSelect() {
+      if (!fileInput.files || fileInput.files.length === 0) return;
+      selectedFile = fileInput.files[0];
+      
+      // Load video preview
+      const url = URL.createObjectURL(selectedFile);
+      previewVid.src = url;
+      
+      // Reset slider to center
+      cropSlider.value = 50;
+      previewVid.style.objectPosition = '50% 50%';
+      sliderVal.textContent = '50%';
+      
+      // Switch UI views
+      dropZone.style.display = 'none';
+      previewUI.style.display = 'block';
+    }
+
+    cropSlider.addEventListener('input', (e) => {
+      const pct = e.target.value;
+      previewVid.style.objectPosition = \`\${pct}% 50%\`;
+      sliderVal.textContent = \`\${pct}%\`;
+    });
+
+    function resetUploadUI() {
+      selectedFile = null;
+      fileInput.value = '';
+      previewVid.src = '';
+      document.getElementById('hero-upload-status').textContent = '';
+      document.getElementById('progress-wrap').style.display = 'none';
+      document.getElementById('progress-bar').style.width = '0%';
+      previewUI.style.display = 'none';
+      dropZone.style.display = 'block';
+      document.getElementById('btn-hero-upload').disabled = false;
+    }
+
+    // XHR Upload Logic
+    function uploadHeroVideo() {
+      if (!selectedFile) return;
+
       const statusEl = document.getElementById('hero-upload-status');
       const btn = document.getElementById('btn-hero-upload');
-
-      if (!fileInput.files || fileInput.files.length === 0) {
-        statusEl.style.color = 'var(--heat)';
-        statusEl.textContent = 'Please select a video file first.';
-        return;
-      }
+      const progressWrap = document.getElementById('progress-wrap');
+      const progressBar = document.getElementById('progress-bar');
+      const finalPosition = \`\${cropSlider.value}% 50%\`;
 
       const formData = new FormData();
-      formData.append('video', fileInput.files[0]);
+      formData.append('video', selectedFile);
+      formData.append('position', finalPosition);
 
       btn.disabled = true;
+      progressWrap.style.display = 'block';
       statusEl.style.color = 'var(--ocean)';
-      statusEl.textContent = 'Uploading video to Cloudflare R2... Please do not close this tab.';
+      statusEl.textContent = 'Uploading video to Cloudflare R2...';
 
-      try {
-        const res = await fetch('/admin/hero-upload', {
-          method: 'POST',
-          body: formData
-        });
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/admin/hero-upload', true);
 
-        if (res.status === 401) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          progressBar.style.width = percentComplete + '%';
+        }
+      };
+
+      xhr.onload = function() {
+        if (xhr.status === 401) {
           window.location.reload();
           return;
         }
 
-        const data = await res.json();
-        if (res.ok && data.success) {
-          statusEl.style.color = 'var(--reef)';
-          statusEl.textContent = 'Success! Active hero video updated.';
-          document.getElementById('active-video-label').textContent = data.active_video;
-          fileInput.value = '';
-        } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status === 200 && data.success) {
+            statusEl.style.color = 'var(--reef)';
+            statusEl.textContent = 'Success! Active hero video updated.';
+            document.getElementById('active-video-label').textContent = data.active_video;
+            document.getElementById('active-position-label').textContent = data.position;
+            
+            // Hold success state for a moment before resetting UI
+            setTimeout(resetUploadUI, 3000);
+          } else {
+            statusEl.style.color = 'var(--heat)';
+            statusEl.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+            btn.disabled = false;
+          }
+        } catch (err) {
           statusEl.style.color = 'var(--heat)';
-          statusEl.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+          statusEl.textContent = 'Error processing server response.';
+          btn.disabled = false;
         }
-      } catch (err) {
+      };
+
+      xhr.onerror = function() {
         statusEl.style.color = 'var(--heat)';
         statusEl.textContent = 'Network error while uploading video.';
-      } finally {
         btn.disabled = false;
-      }
+      };
+
+      xhr.send(formData);
     }
 
     // Modal logic
