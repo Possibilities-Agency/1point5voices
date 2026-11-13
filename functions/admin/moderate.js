@@ -13,26 +13,33 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({ error: "Database binding missing" }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
 
-  // 2. Handle GET: Fetch Pending Signatures & Media (Paginated)
+  // 2. Handle GET: Fetch Signatures & Media (Paginated & Filtered)
   if (request.method === "GET") {
     try {
       const url = new URL(request.url);
       const page = parseInt(url.searchParams.get("page")) || 1;
-      const limit = 50; // Items per page
+      const statusFilter = url.searchParams.get("status") || "pending";
+      const limit = 50; 
       const offset = (page - 1) * limit;
 
-      // Get the total count of all pending items (both hidden signatures and pending media)
+      // Dynamically build the WHERE clause based on the requested tab
+      let whereClause = "WHERE s.is_public = 0 OR m.status = 'pending'";
+      if (statusFilter === "approved") whereClause = "WHERE s.is_public = 1";
+      if (statusFilter === "rejected") whereClause = "WHERE s.is_public = -1";
+      if (statusFilter === "all") whereClause = "";
+
+      // Get the total count for the specific filter
       const countResult = await env.DB.prepare(
         `SELECT COUNT(s.id) as total 
          FROM signatures s
          LEFT JOIN media m ON s.id = m.signature_id
-         WHERE s.is_public = 0 OR m.status = 'pending'`
+         ${whereClause}`
       ).first();
       
       const totalItems = countResult.total || 0;
       const totalPages = Math.ceil(totalItems / limit);
 
-      // Fetch the specific page of data with explicit column aliases
+      // Fetch the specific page of data (Ordered by newest first for better history viewing)
       const { results } = await env.DB.prepare(
         `SELECT 
            s.id AS sig_id, 
@@ -46,8 +53,8 @@ export async function onRequest(context) {
            m.status AS media_status
          FROM signatures s
          LEFT JOIN media m ON s.id = m.signature_id
-         WHERE s.is_public = 0 OR m.status = 'pending'
-         ORDER BY s.created_at ASC
+         ${whereClause}
+         ORDER BY s.created_at DESC
          LIMIT ? OFFSET ?`
       ).bind(limit, offset).all();
 
@@ -67,27 +74,30 @@ export async function onRequest(context) {
     }
   }
 
-  // 3. Handle POST: Approve or Reject
+  // 3. Handle POST: Update Status (Approve, Reject, or Revert to Pending)
   if (request.method === "POST") {
     try {
       const body = await request.json();
-      const { id, action } = body; // id here is the signature_id
+      const { id, action } = body; 
 
-      if (!id || !['approve', 'reject'].includes(action)) {
+      if (!id || !['approve', 'reject', 'pending'].includes(action)) {
         return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers: { "Content-Type": "application/json" } });
       }
 
       if (action === 'approve') {
-        // Approve both the signature and any attached media
         await env.DB.batch([
           env.DB.prepare("UPDATE signatures SET is_public = 1 WHERE id = ?").bind(id),
           env.DB.prepare("UPDATE media SET status = 'approved' WHERE signature_id = ?").bind(id)
         ]);
-      } else {
-        // Reject by hiding the signature and marking media as rejected
+      } else if (action === 'reject') {
         await env.DB.batch([
           env.DB.prepare("UPDATE signatures SET is_public = -1 WHERE id = ?").bind(id),
           env.DB.prepare("UPDATE media SET status = 'rejected' WHERE signature_id = ?").bind(id)
+        ]);
+      } else if (action === 'pending') {
+        await env.DB.batch([
+          env.DB.prepare("UPDATE signatures SET is_public = 0 WHERE id = ?").bind(id),
+          env.DB.prepare("UPDATE media SET status = 'pending' WHERE signature_id = ?").bind(id)
         ]);
       }
 
