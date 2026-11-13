@@ -667,48 +667,42 @@ I won't stay silent.`;
 // --- Hero Video Logic ---
   async function initHeroVideo() {
     try {
-      // Check if an active video is configured
       const res = await fetch('/api/media/hero', { method: 'HEAD' });
-      if (!res.ok) return; // If 404, fallback poster image remains visible
+      if (!res.ok) return; 
       
       const heroVid = $("heroBgVid");
       const heroWrap = $("heroVidWrap");
       const btnSpeech = $("btnSpeechPlay");
+      const btnClose = $("btnSpeechClose"); // Grab the new close button
       const heroSection = document.querySelector('.hero');
       
-      // Load the video stream from our new endpoint
       heroVid.src = '/api/media/hero';
-      
-      // Extract the object-position header exposed by the API
       heroVid.style.objectPosition = res.headers.get('X-Hero-Position') || "50% 50%";
-      
-      // Reveal the play button since we have a video
       btnSpeech.style.display = "inline-flex";
       
-      // Handle the modal takeover
-      btnSpeech.addEventListener("click", () => {
-        if (!heroSection.classList.contains("video-active")) {
-          // Open Modal state
-          heroSection.classList.add("video-active");
-          heroVid.muted = false;
-          heroVid.controls = true;
-          heroVid.currentTime = 0; // Restart from beginning
-          heroVid.play();
-          btnSpeech.innerHTML = "⏸ Pause speech";
-        } else {
-          // Close Modal state
-          heroSection.classList.remove("video-active");
-          heroVid.muted = true;
-          heroVid.controls = false;
-          heroVid.play(); // Resume background loop
-          btnSpeech.innerHTML = "▶ Listen to the speech";
-        }
-      });
+      // Centralized open function
+      function openModal() {
+        heroSection.classList.add("video-active");
+        heroVid.muted = false;
+        heroVid.controls = true;
+        heroVid.currentTime = 0; 
+        heroVid.play();
+      }
+      
+      // Centralized close function
+      function closeModal() {
+        heroSection.classList.remove("video-active");
+        heroVid.muted = true;
+        heroVid.controls = false;
+        heroVid.play(); 
+      }
+      
+      btnSpeech.addEventListener("click", openModal);
+      btnClose.addEventListener("click", closeModal);
       
     } catch(e) { console.error("Hero video failed to load", e); }
   }
   
-  // Call it immediately
   initHeroVideo();
 
   if (window.d3 && window.topojson) initMap(); else window.addEventListener("DOMContentLoaded", initMap);
