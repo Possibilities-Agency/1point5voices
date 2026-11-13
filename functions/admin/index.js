@@ -201,6 +201,7 @@ export async function onRequestGet(context) {
               Mobile Focus: <span id="active-position-label">${activeHeroPosition}</span>
             </div>
           </div>
+          ${activeHeroVideo ? `<button class="btn-page" onclick="adjustCrop()">Adjust Crop</button>` : ''}
         </div>
 
         <input type="file" id="hero-video-file" accept="video/mp4,video/webm,video/*" style="display: none;">
@@ -226,6 +227,7 @@ export async function onRequestGet(context) {
           </div>
 
           <button id="btn-hero-upload" class="btn-upload" onclick="uploadHeroVideo()">Upload & Set Active</button>
+          <button id="btn-hero-adjust" class="btn-upload" style="display: none;" onclick="saveCropAdjustment()">Save New Crop</button>
           <button id="btn-hero-cancel" class="btn-cancel" onclick="resetUploadUI()">Cancel</button>
 
           <div class="progress-section" id="progress-section">
@@ -254,6 +256,8 @@ export async function onRequestGet(context) {
 
   <script>
     let currentPage = 1;
+    let currentActiveVideo = "${activeHeroVideo}";
+    let currentActivePosition = "${activeHeroPosition}";
 
     function switchTab(id, btnEl) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -262,7 +266,7 @@ export async function onRequestGet(context) {
       const targetBtn = btnEl || (window.event && window.event.target);
       if (targetBtn) targetBtn.classList.add('active');
       
-      if(id === 'analytics') {
+      if (id === 'analytics') {
         loadAnalytics();
       }
     }
@@ -310,6 +314,7 @@ export async function onRequestGet(context) {
       const fileMetaEl = document.getElementById('selected-file-meta');
       const statusEl = document.getElementById('hero-upload-status');
       fileMetaEl.textContent = \`\${selectedFile.name} · \${sizeMB} MB\`;
+      fileMetaEl.style.display = 'inline-block';
 
       if (selectedFile.size > 5 * 1024 * 1024 * 1024) {
         statusEl.style.color = 'var(--heat)';
@@ -330,6 +335,37 @@ export async function onRequestGet(context) {
       // Switch UI views
       dropZone.style.display = 'none';
       previewUI.style.display = 'block';
+      document.getElementById('btn-hero-upload').style.display = 'inline-block';
+      document.getElementById('btn-hero-adjust').style.display = 'none';
+    }
+
+    function adjustCrop() {
+      if (!currentActiveVideo) return;
+      
+      // Hide drop zone, show preview UI
+      dropZone.style.display = 'none';
+      previewUI.style.display = 'block';
+      
+      // Swap buttons and hide upload-specific elements
+      document.getElementById('btn-hero-upload').style.display = 'none';
+      document.getElementById('btn-hero-adjust').style.display = 'inline-block';
+      document.getElementById('selected-file-meta').style.display = 'none';
+      document.getElementById('progress-section').style.display = 'none';
+      document.getElementById('hero-upload-status').textContent = '';
+      
+      // Stream the active video directly from the new edge endpoint
+      previewVid.src = '/api/media/hero';
+      
+      // Parse the saved string (e.g. "75% 50%") to configure the slider
+      let pct = 50;
+      if (currentActivePosition) {
+         const match = currentActivePosition.match(/(\\d+)%/);
+         if (match) pct = parseInt(match[1]);
+      }
+      
+      cropSlider.value = pct;
+      previewVid.style.objectPosition = \`\${pct}% 50%\`;
+      sliderVal.textContent = \`\${pct}%\`;
     }
 
     cropSlider.addEventListener('input', (e) => {
@@ -349,8 +385,49 @@ export async function onRequestGet(context) {
       progressBar.classList.remove('processing');
       previewUI.style.display = 'none';
       dropZone.style.display = 'block';
+      
       document.getElementById('btn-hero-upload').disabled = false;
+      document.getElementById('btn-hero-upload').style.display = 'inline-block';
+      document.getElementById('btn-hero-adjust').disabled = false;
+      document.getElementById('btn-hero-adjust').style.display = 'none';
       document.getElementById('btn-hero-cancel').disabled = false;
+    }
+
+    // Reuse the hero-confirm endpoint to save adjustment without re-uploading
+    async function saveCropAdjustment() {
+      const btn = document.getElementById('btn-hero-adjust');
+      const cancelBtn = document.getElementById('btn-hero-cancel');
+      const statusEl = document.getElementById('hero-upload-status');
+      const finalPosition = \`\${cropSlider.value}% 50%\`;
+
+      btn.disabled = true;
+      cancelBtn.disabled = true;
+      statusEl.style.color = 'var(--muted)';
+      statusEl.textContent = 'Saving new crop alignment...';
+
+      try {
+        const confirmRes = await fetch('/admin/hero-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ r2Key: currentActiveVideo, position: finalPosition })
+        });
+
+        const confirmData = await confirmRes.json();
+        if (confirmRes.ok && confirmData.success) {
+           statusEl.style.color = 'var(--reef)';
+           statusEl.textContent = 'Success! Crop position updated.';
+           currentActivePosition = finalPosition;
+           document.getElementById('active-position-label').textContent = finalPosition;
+           setTimeout(resetUploadUI, 2000);
+        } else {
+           throw new Error(confirmData.error || 'Failed to save configuration.');
+        }
+      } catch (err) {
+        statusEl.style.color = 'var(--heat)';
+        statusEl.textContent = 'Database update failed: ' + err.message;
+        btn.disabled = false;
+        cancelBtn.disabled = false;
+      }
     }
 
     // Direct Pre-Signed R2 Upload Logic
@@ -425,8 +502,18 @@ export async function onRequestGet(context) {
                  progressPhase.textContent = 'Complete!';
                  statusEl.style.color = 'var(--reef)';
                  statusEl.textContent = 'Success! Active hero video updated.';
+                 
+                 // Update active variables so immediate adjustment works
+                 currentActiveVideo = authData.active_video;
+                 currentActivePosition = finalPosition;
+                 
                  document.getElementById('active-video-label').textContent = authData.active_video;
                  document.getElementById('active-position-label').textContent = finalPosition;
+                 // Show the "Adjust Crop" button in the banner if it wasn't there
+                 if (!document.querySelector('.active-video-banner button')) {
+                    const btnHtml = \`<button class="btn-page" onclick="adjustCrop()">Adjust Crop</button>\`;
+                    document.querySelector('.active-video-banner').insertAdjacentHTML('beforeend', btnHtml);
+                 }
                  setTimeout(resetUploadUI, 3000);
               } else {
                  throw new Error(confirmData.error || 'Failed to save configuration.');
@@ -482,7 +569,7 @@ export async function onRequestGet(context) {
     }
 
     function closeModal(event) {
-      if(event) event.preventDefault();
+      if (event) event.preventDefault();
       const modal = document.getElementById('mediaModal');
       const body = document.getElementById('modalBody');
       modal.classList.remove('active');
