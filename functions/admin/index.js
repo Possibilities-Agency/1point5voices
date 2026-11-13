@@ -300,4 +300,90 @@ export async function onRequestGet(context) {
           const typeColor = item.kind ? '#0066cc' : '#666';
           const typeBg = item.kind ? '#e6f3ff' : '#f0f0f0';
           
-          let mediaHtml = '<span
+          let mediaHtml = '<span style="color: var(--muted);">No message</span>';
+          if (item.kind === 'video' && item.media_id) {
+             mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'video')">Watch Video</button>\`;
+          } else if (item.kind === 'audio' && item.media_id) {
+             mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'audio')">Listen to Audio</button>\`;
+          } else if (item.message) {
+             mediaHtml = \`"\${item.message}"\`;
+          }
+
+          return \`
+          <tr id="row-\${item.sig_id}">
+            <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
+            <td>\${item.country || 'Unknown'}</td>
+            <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${typeLabel}</span></td>
+            <td>\${mediaHtml}</td>
+            <td>
+              <button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>
+              <button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>
+            </td>
+          </tr>
+          \`;
+        }).join('');
+
+        currentPage = data.pagination.currentPage;
+        document.getElementById('page-info').innerHTML = \`Showing page \${currentPage} of \${data.pagination.totalPages} (\${data.pagination.totalItems} total pending)\`;
+        document.getElementById('btn-prev').disabled = currentPage <= 1;
+        document.getElementById('btn-next').disabled = !data.pagination.hasMore;
+        
+        window._pendingTotal = data.pagination.totalItems;
+
+      } catch (e) {
+        document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items. Check the network tab.</td></tr>';
+      }
+    }
+
+    function changePage(direction) {
+      loadPending(currentPage + direction);
+    }
+
+    async function moderate(id, action) {
+      const row = document.getElementById(\`row-\${id}\`);
+      row.style.opacity = '0.5';
+      
+      try {
+        const res = await fetch('/admin/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action })
+        });
+        
+        if (res.ok) {
+          row.remove();
+          if (document.getElementById('media-list').children.length === 0) {
+            loadPending(currentPage);
+          }
+        } else {
+          row.style.opacity = '1';
+          alert('Failed to update status.');
+        }
+      } catch (e) {
+        row.style.opacity = '1';
+        alert('An error occurred.');
+      }
+    }
+
+    async function loadAnalytics() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        
+        document.getElementById('stat-total').innerText = data.total.toLocaleString();
+        document.getElementById('stat-countries').innerText = Object.keys(data.countries).length;
+        document.getElementById('stat-pending').innerText = window._pendingTotal || "0";
+      } catch (e) {
+        console.error("Failed to load analytics");
+      }
+    }
+
+    loadPending();
+  </script>
+</body>
+</html>`;
+
+  return new Response(html, {
+    headers: { "Content-Type": "text/html;charset=UTF-8" }
+  });
+}
