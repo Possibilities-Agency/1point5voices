@@ -22,12 +22,12 @@ export async function onRequest(context) {
   }
 
   // Otherwise, redirect unauthorized users to Google OAuth
+  // The &hd= parameter has been removed to allow multi-domain Google accounts
   const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${env.GOOGLE_CLIENT_ID}` +
     `&redirect_uri=${encodeURIComponent(url.origin + "/admin/callback")}` +
     `&response_type=code` +
-    `&scope=email%20profile` +
-    `&hd=possibilities.agency`; 
+    `&scope=email%20profile`; 
 
   return Response.redirect(redirectUrl, 302);
 }
