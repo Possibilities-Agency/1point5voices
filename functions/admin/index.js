@@ -1,9 +1,25 @@
 // functions/admin/index.js
 
 export async function onRequestGet(context) {
-  const cookieHeader = context.request.headers.get("Cookie") || "";
+  const { request, env } = context;
+  const cookieHeader = request.headers.get("Cookie") || "";
   const match = cookieHeader.match(/admin_session=([^;]+)/);
   const userEmail = match ? decodeURIComponent(match[1]) : "Admin";
+
+  // Fetch the currently active hero video key from D1
+  let activeHeroVideo = "";
+  if (env.DB) {
+    try {
+      const setting = await env.DB.prepare(
+        "SELECT value FROM settings WHERE key = 'hero_video_key'"
+      ).first();
+      if (setting && setting.value) {
+        activeHeroVideo = setting.value;
+      }
+    } catch (e) {
+      // Table check fallback
+    }
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -16,7 +32,7 @@ export async function onRequestGet(context) {
     .admin-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--line); padding-bottom: 20px; margin-bottom: 30px; }
     .admin-header h1 { margin: 0; font-size: 42px; line-height: 1; }
     .user-badge { background: var(--sand); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); }
-    .tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
     .tab { font-family: inherit; font-size: 15px; font-weight: 600; padding: 12px 24px; background: transparent; border: 1.5px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--muted); transition: all 0.2s; }
     .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
     .panel { display: none; }
@@ -44,6 +60,15 @@ export async function onRequestGet(context) {
     .export-box { background: var(--sand); border-radius: 18px; padding: 30px; display: flex; justify-content: space-between; align-items: center; }
     .btn-export { background: var(--ocean); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; display: inline-block; }
 
+    /* Hero Media Upload Styles */
+    .hero-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 30px; }
+    .active-video-banner { background: var(--sand); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .upload-form-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+    .file-picker { flex: 1; min-width: 240px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--paper); font-family: inherit; font-size: 14px; }
+    .btn-upload { background: var(--ink); color: #fff; border: none; padding: 14px 28px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; }
+    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+    .upload-status { margin-top: 16px; font-size: 14px; font-weight: 600; }
+
     /* Modal Styles */
     .modal-overlay { position: fixed; inset: 0; background: rgba(11, 27, 43, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; visibility: hidden; transition: opacity 0.2s; backdrop-filter: blur(4px); }
     .modal-overlay.active { opacity: 1; visibility: visible; }
@@ -68,6 +93,7 @@ export async function onRequestGet(context) {
     <div class="tabs">
       <button class="tab active" onclick="switchTab('moderation')">Pending Signatures</button>
       <button class="tab" onclick="switchTab('analytics')">Signatures & Export</button>
+      <button class="tab" onclick="switchTab('hero-media')">Hero Media</button>
     </div>
 
     <div id="moderation" class="panel active">
@@ -127,6 +153,29 @@ export async function onRequestGet(context) {
         <a href="/admin/export" class="btn-export" target="_blank">Download CSV</a>
       </div>
     </div>
+
+    <div id="hero-media" class="panel">
+      <h2 style="margin-bottom: 8px;">Hero Section Video</h2>
+      <p style="color: var(--muted); margin-bottom: 24px;">Upload a landscape MP4 video to loop in the homepage hero background and play in the full-speech modal.</p>
+
+      <div class="hero-card">
+        <div class="active-video-banner">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Currently Active Video</div>
+            <div id="active-video-label" style="font-weight: 600; margin-top: 4px; color: var(--ink);">
+              ${activeHeroVideo ? activeHeroVideo : "No hero video set yet"}
+            </div>
+          </div>
+        </div>
+
+        <label for="hero-video-file" style="font-weight: 700; font-size: 14px; display: block;">Select New Video File (MP4 recommended)</label>
+        <div class="upload-form-row">
+          <input type="file" id="hero-video-file" class="file-picker" accept="video/mp4,video/webm,video/*">
+          <button id="btn-hero-upload" class="btn-upload" onclick="uploadHeroVideo()">Upload & Set Active</button>
+        </div>
+        <div id="hero-upload-status" class="upload-status"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Media Review Modal -->
@@ -152,11 +201,58 @@ export async function onRequestGet(context) {
       }
     }
 
+    async function uploadHeroVideo() {
+      const fileInput = document.getElementById('hero-video-file');
+      const statusEl = document.getElementById('hero-upload-status');
+      const btn = document.getElementById('btn-hero-upload');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        statusEl.style.color = 'var(--heat)';
+        statusEl.textContent = 'Please select a video file first.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('video', fileInput.files[0]);
+
+      btn.disabled = true;
+      statusEl.style.color = 'var(--ocean)';
+      statusEl.textContent = 'Uploading video to Cloudflare R2... Please do not close this tab.';
+
+      try {
+        const res = await fetch('/admin/hero-upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (res.status === 401) {
+          window.location.reload();
+          return;
+        }
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          statusEl.style.color = 'var(--reef)';
+          statusEl.textContent = 'Success! Active hero video updated.';
+          document.getElementById('active-video-label').textContent = data.active_video;
+          fileInput.value = '';
+        } else {
+          statusEl.style.color = 'var(--heat)';
+          statusEl.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+        }
+      } catch (err) {
+        statusEl.style.color = 'var(--heat)';
+        statusEl.textContent = 'Network error while uploading video.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     // Modal logic
     function openModal(mediaId, kind) {
       const modal = document.getElementById('mediaModal');
       const body = document.getElementById('modalBody');
-      const mediaUrl = \`/api/media/\${mediaId}\`; // Corrected path to the public API
+      const mediaUrl = \`/api/media/\${mediaId}\`;
       
       if (kind === 'video') {
         body.innerHTML = \`<video controls autoplay playsinline src="\${mediaUrl}"></video>\`;
@@ -172,7 +268,6 @@ export async function onRequestGet(context) {
       const modal = document.getElementById('mediaModal');
       const body = document.getElementById('modalBody');
       modal.classList.remove('active');
-      // Clear the HTML to stop media playback instantly
       setTimeout(() => { body.innerHTML = ''; }, 200); 
     }
 
@@ -205,90 +300,4 @@ export async function onRequestGet(context) {
           const typeColor = item.kind ? '#0066cc' : '#666';
           const typeBg = item.kind ? '#e6f3ff' : '#f0f0f0';
           
-          let mediaHtml = '<span style="color: var(--muted);">No message</span>';
-          if (item.kind === 'video' && item.media_id) {
-             mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'video')">Watch Video</button>\`;
-          } else if (item.kind === 'audio' && item.media_id) {
-             mediaHtml = \`<button class="btn-media" onclick="openModal(\${item.media_id}, 'audio')">Listen to Audio</button>\`;
-          } else if (item.message) {
-             mediaHtml = \`"\${item.message}"\`;
-          }
-
-          return \`
-          <tr id="row-\${item.sig_id}">
-            <td><strong>\${item.first_name || 'Anonymous'}</strong></td>
-            <td>\${item.country || 'Unknown'}</td>
-            <td><span style="background: \${typeBg}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: \${typeColor}; text-transform: uppercase;">\${typeLabel}</span></td>
-            <td>\${mediaHtml}</td>
-            <td>
-              <button class="btn-approve" onclick="moderate(\${item.sig_id}, 'approve')">Approve</button>
-              <button class="btn-reject" onclick="moderate(\${item.sig_id}, 'reject')">Reject</button>
-            </td>
-          </tr>
-          \`;
-        }).join('');
-
-        currentPage = data.pagination.currentPage;
-        document.getElementById('page-info').innerHTML = \`Showing page \${currentPage} of \${data.pagination.totalPages} (\${data.pagination.totalItems} total pending)\`;
-        document.getElementById('btn-prev').disabled = currentPage <= 1;
-        document.getElementById('btn-next').disabled = !data.pagination.hasMore;
-        
-        window._pendingTotal = data.pagination.totalItems;
-
-      } catch (e) {
-        document.getElementById('media-list').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--heat); padding: 40px;">Error loading pending items. Check the network tab.</td></tr>';
-      }
-    }
-
-    function changePage(direction) {
-      loadPending(currentPage + direction);
-    }
-
-    async function moderate(id, action) {
-      const row = document.getElementById(\`row-\${id}\`);
-      row.style.opacity = '0.5';
-      
-      try {
-        const res = await fetch('/admin/moderate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, action })
-        });
-        
-        if (res.ok) {
-          row.remove();
-          if (document.getElementById('media-list').children.length === 0) {
-            loadPending(currentPage);
-          }
-        } else {
-          row.style.opacity = '1';
-          alert('Failed to update status.');
-        }
-      } catch (e) {
-        row.style.opacity = '1';
-        alert('An error occurred.');
-      }
-    }
-
-    async function loadAnalytics() {
-      try {
-        const res = await fetch('/api/stats');
-        const data = await res.json();
-        
-        document.getElementById('stat-total').innerText = data.total.toLocaleString();
-        document.getElementById('stat-countries').innerText = Object.keys(data.countries).length;
-        document.getElementById('stat-pending').innerText = window._pendingTotal || "0";
-      } catch (e) {
-        console.error("Failed to load analytics");
-      }
-    }
-
-    loadPending();
-  </script>
-</body>
-</html>`;
-
-  return new Response(html, {
-    headers: { "Content-Type": "text/html;charset=UTF-8" }
-  });
-}
+          let mediaHtml = '<span
