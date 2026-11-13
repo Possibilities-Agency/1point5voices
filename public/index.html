@@ -304,12 +304,15 @@
     // We get randomized data from the backend. Just filter for public.
     const pub = sigs.filter(s=>s.public);
     
-    // 1. Populate the Ticker (All Submissions)
+   // 1. Populate the Ticker (All Submissions)
     const tickerContainer = $("ticker");
     if (tickerContainer && pub.length > 0) {
-       tickerContainer.innerHTML = pub.map(s => 
-         `<span class="tick-item"><strong>${esc(s.first)}</strong> from ${esc(s.country)}</span>`
-       ).join('<span class="tick-sep">·</span>');
+       tickerContainer.innerHTML = pub.map(s => {
+         const roleText = (s.role && s.role !== "Citizen") 
+           ? ` as ${esc(s.role.toLowerCase() === "athlete" ? "an athlete" : "a" + (/^[aeiou]/i.test(s.role) ? "n " : " ") + s.role.toLowerCase())}` 
+           : "";
+         return `<span class="tick-item"><strong>${esc(s.first)}</strong> from ${esc(s.country)} added their voice${roleText}</span>`;
+       }).join('<span class="tick-sep" style="margin: 0 44px;">·</span>');
     }
 
     // 2. Filter for the Wall (Only items with content: Text, Video, or Audio)
@@ -763,7 +766,7 @@ I won't stay silent.`;
   if (signedBefore) { setSigned(); recMode("after"); $("recToggle").hidden = true; setRecAvailable(!!uploadToken); }
   loadStats();
   loadClips();
-  setInterval(loadStats, 30000);
+  setInterval(loadStats, 300000);
 })();
 </script>
 

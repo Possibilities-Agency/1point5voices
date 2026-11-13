@@ -1,6 +1,4 @@
 // functions/api/stats.js
-// GET /api/stats — public totals for the counter, map, role chips and wall.
-// Never returns emails. Cached at Cloudflare's edge for 15 seconds.
 
 export async function onRequestGet({ env }) {
   try {
@@ -9,11 +7,10 @@ export async function onRequestGet({ env }) {
     }
 
     const [total, countries, roles, recent] = await env.DB.batch([
-      env.DB.prepare("SELECT COUNT(*) AS n FROM signatures"),
-      env.DB.prepare("SELECT country, COUNT(*) AS n FROM signatures GROUP BY country"),
-      env.DB.prepare("SELECT role, COUNT(*) AS n FROM signatures GROUP BY role"),
+      env.DB.prepare("SELECT value AS n FROM stats_kv WHERE key = 'total_signatures'"),
+      env.DB.prepare("SELECT country, count AS n FROM stats_countries"),
+      env.DB.prepare("SELECT role, count AS n FROM stats_roles"),
       
-      // New randomized query joining the media table to pull audio/video data
       env.DB.prepare(`
         SELECT 
           s.id AS sig_id, 
@@ -43,8 +40,8 @@ export async function onRequestGet({ env }) {
     };
 
     return new Response(JSON.stringify(body), {
-      // Reduced cache time to 15s to allow for more frequent randomization on the frontend
-      headers: { "content-type": "application/json", "cache-control": "public, max-age=15" },
+      // Extended cache to 5 minutes (300 seconds) to protect the database
+      headers: { "content-type": "application/json", "cache-control": "public, max-age=300" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
