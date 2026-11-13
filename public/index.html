@@ -32,21 +32,33 @@
 </div></div>
 
 <header class="hero">
+  <!-- The new dynamic video background wrapper -->
+  <div class="hero-vid-wrap" id="heroVidWrap">
+    <!-- The fallback image will show before JS loads the video, or if no video is active in D1 -->
+    <video id="heroBgVid" autoplay loop muted playsinline poster="img/pm-mottley-speech.jpg"></video>
+  </div>
+
   <div class="wrap hero-grid">
     <div class="h-intro">
       <div class="kicker">A global movement · One shared future</div>
       <h1>1.5 billion voices<br>for <span class="hot">1.5 degrees.</span></h1>
       <p class="sub-methane"><b>Methane is the fastest brake we have.</b> Let us commit to reducing methane emissions to near zero.</p>
       <div class="leader">
-        <img src="img/pm-mottley-portrait.jpg" alt="Prime Minister Mia Amor Mottley speaking at a UN climate conference" width="800" height="774">
+        <!-- We removed the static portrait to give the video maximum impact -->
         <div class="leader-txt">
           <div class="leader-k">Leading the call</div>
           <blockquote>“You may not have a vote in this hall, but you have a voice.”</blockquote>
           <div class="leader-who"><b>Hon. Mia Amor Mottley</b>Prime Minister of Barbados<br>Chair, Climate Vulnerable Forum and V20</div>
+          
+          <!-- The new trigger button -->
+          <button type="button" class="btn-speech" id="btnSpeechPlay" style="display: none;">
+             ▶ Listen to the speech
+          </button>
         </div>
       </div>
-      </div>
-      <div class="h-body">
+    </div>
+    
+    <div class="h-body">
       <p class="lede">At COP31, Mia Amor Mottley, Prime Minister of Barbados and Chair of the Climate Vulnerable Forum and V20, challenged the world to recognise that the climate crisis is too important to be left only to those at the negotiating table. Not everyone has a seat at that table, but everyone has a stake in what happens next.</p>
       <p class="lede" style="margin-top:14px">Our goal is to bring together 1.5 billion voices before COP32, united in the call to keep the 1.5°C goal alive and demand stronger climate action. By joining, you will add your voice to a global call for governments to cut emissions faster, for financial institutions to make climate solutions affordable, and for leaders to demonstrate what they have delivered.</p>
       <p class="lede" style="margin-top:14px">Together, we will use this public support to press for concrete commitments and measurable progress before, during and beyond COP32. Every voice strengthens the demand. Every commitment must lead to action.</p>
@@ -648,6 +660,53 @@ I won't stay silent.`;
     $("sign").scrollIntoView({behavior:"smooth"}); $("first").focus();
   });
   $("shareBtn").addEventListener("click",()=>copyText(location.href.split("#")[0]));
+
+// --- Hero Video Logic ---
+  async function initHeroVideo() {
+    try {
+      // Check if an active video is configured
+      const res = await fetch('/api/media/hero', { method: 'HEAD' });
+      if (!res.ok) return; // If 404, fallback poster image remains visible
+      
+      const heroVid = $("heroBgVid");
+      const heroWrap = $("heroVidWrap");
+      const btnSpeech = $("btnSpeechPlay");
+      const heroSection = document.querySelector('.hero');
+      
+      // Load the video stream from our new endpoint
+      heroVid.src = '/api/media/hero';
+      
+      // Extract the object-position header exposed by the API
+      heroVid.style.objectPosition = res.headers.get('X-Hero-Position') || "50% 50%";
+      
+      // Reveal the play button since we have a video
+      btnSpeech.style.display = "inline-flex";
+      
+      // Handle the modal takeover
+      btnSpeech.addEventListener("click", () => {
+        if (!heroSection.classList.contains("video-active")) {
+          // Open Modal state
+          heroSection.classList.add("video-active");
+          heroVid.muted = false;
+          heroVid.controls = true;
+          heroVid.currentTime = 0; // Restart from beginning
+          heroVid.play();
+          btnSpeech.innerHTML = "⏸ Pause speech";
+        } else {
+          // Close Modal state
+          heroSection.classList.remove("video-active");
+          heroVid.muted = true;
+          heroVid.controls = false;
+          heroVid.play(); // Resume background loop
+          btnSpeech.innerHTML = "▶ Listen to the speech";
+        }
+      });
+      
+    } catch(e) { console.error("Hero video failed to load", e); }
+  }
+  
+  // Call it immediately
+  initHeroVideo();
 
   if (window.d3 && window.topojson) initMap(); else window.addEventListener("DOMContentLoaded", initMap);
   render();
