@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="style.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://unpkg.com/fix-webm-duration"></script>
 </head>
 <body>
 
@@ -519,8 +520,24 @@ I won't stay silent.`;
     recorder.onstop = () => {
       clearInterval(recTimer); stopStream(); live.srcObject = null;
       const type = (recorder.mimeType || mime || (kind === "video" ? "video/webm" : "audio/webm")).split(";")[0];
-      recBlob = new Blob(chunks, { type });
-      showReview();
+      
+      // Calculate the exact duration of the recording
+      const duration = Date.now() - t0; 
+      
+      const rawBlob = new Blob(chunks, { type });
+      
+      // Check if the library is loaded and it's a webm file
+      if (window.ysFixWebmDuration && type.includes('webm')) {
+          // Inject the duration metadata into the blob
+          window.ysFixWebmDuration(rawBlob, duration, function(fixedBlob) {
+              recBlob = fixedBlob;
+              showReview();
+          });
+      } else {
+          // Fallback if library fails to load or it's not a webm
+          recBlob = rawBlob;
+          showReview();
+      }
     };
     const limit = kind === "video" ? 45 : 60;
     $("recMax").textContent = "of " + (kind === "video" ? "0:45" : "1:00");
