@@ -76,7 +76,8 @@ export async function onRequestGet(context) {
     .drop-zone-sub { font-size: 14px; color: var(--muted); margin-top: 4px; }
     
     .preview-ui { display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-top: 20px; text-align: center; }
-    .preview-header { font-weight: 700; font-size: 18px; margin-bottom: 8px; }
+    .preview-header { font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+    .file-meta-pill { display: inline-block; background: var(--sand); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
     .preview-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
     
     .mobile-preview-box { width: 100%; max-width: 260px; aspect-ratio: 9/16; margin: 0 auto 24px; border-radius: 16px; overflow: hidden; border: 4px solid var(--ink); box-shadow: 0 10px 30px rgba(0,0,0,0.15); background: #000; }
@@ -89,10 +90,16 @@ export async function onRequestGet(context) {
     .btn-upload { background: var(--ink); color: #fff; border: none; padding: 14px 32px; border-radius: 999px; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; }
     .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-cancel { background: transparent; color: var(--muted); border: none; font-weight: 600; font-size: 14px; cursor: pointer; margin-left: 16px; }
+    .btn-cancel:disabled { opacity: 0.4; cursor: not-allowed; }
     
-    .progress-wrap { width: 100%; max-width: 400px; height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 20px auto 0; display: none; }
-    .progress-bar { width: 0%; height: 100%; background: var(--ocean); transition: width 0.1s linear; }
-    .upload-status { margin-top: 12px; font-size: 14px; font-weight: 600; }
+    /* Granular Progress Bar */
+    .progress-section { width: 100%; max-width: 440px; margin: 22px auto 0; display: none; text-align: left; }
+    .progress-meta { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .progress-wrap { width: 100%; height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+    .progress-bar { width: 0%; height: 100%; background: var(--ocean); transition: width 0.15s ease-out; border-radius: 999px; }
+    .progress-bar.processing { background: var(--reef); animation: pulseBar 1.2s ease-in-out infinite; }
+    @keyframes pulseBar { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+    .upload-status { margin-top: 12px; font-size: 14px; font-weight: 600; text-align: center; }
 
     /* Modal Styles */
     .modal-overlay { position: fixed; inset: 0; background: rgba(11, 27, 43, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; opacity: 0; visibility: hidden; transition: opacity 0.2s; backdrop-filter: blur(4px); }
@@ -116,9 +123,9 @@ export async function onRequestGet(context) {
     </div>
     
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('moderation')">Pending Signatures</button>
-      <button class="tab" onclick="switchTab('analytics')">Signatures & Export</button>
-      <button class="tab" onclick="switchTab('hero-media')">Hero Media</button>
+      <button class="tab active" onclick="switchTab('moderation', this)">Pending Signatures</button>
+      <button class="tab" onclick="switchTab('analytics', this)">Signatures & Export</button>
+      <button class="tab" onclick="switchTab('hero-media', this)">Hero Media</button>
     </div>
 
     <div id="moderation" class="panel active">
@@ -201,11 +208,12 @@ export async function onRequestGet(context) {
         <div class="drop-zone" id="drop-zone">
           <div class="drop-zone-icon">📥</div>
           <div class="drop-zone-text">Drag & drop your landscape video here</div>
-          <div class="drop-zone-sub">or click to browse your files (MP4 recommended)</div>
+          <div class="drop-zone-sub">or click to browse your files (MP4 recommended, max 100 MB)</div>
         </div>
 
         <div class="preview-ui" id="preview-ui">
           <div class="preview-header">Target Mobile Crop</div>
+          <div class="file-meta-pill" id="selected-file-meta"></div>
           <div class="preview-sub">Slide to frame the subject for vertical mobile screens. Desktop users will see the full width.</div>
           
           <div class="mobile-preview-box">
@@ -218,10 +226,16 @@ export async function onRequestGet(context) {
           </div>
 
           <button id="btn-hero-upload" class="btn-upload" onclick="uploadHeroVideo()">Upload & Set Active</button>
-          <button class="btn-cancel" onclick="resetUploadUI()">Cancel</button>
+          <button id="btn-hero-cancel" class="btn-cancel" onclick="resetUploadUI()">Cancel</button>
 
-          <div class="progress-wrap" id="progress-wrap">
-            <div class="progress-bar" id="progress-bar"></div>
+          <div class="progress-section" id="progress-section">
+            <div class="progress-meta">
+              <span id="progress-phase">Uploading to Cloudflare...</span>
+              <span id="progress-stats">0.0 MB / 0.0 MB (0%)</span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
           </div>
           <div id="hero-upload-status" class="upload-status"></div>
         </div>
@@ -241,13 +255,14 @@ export async function onRequestGet(context) {
   <script>
     let currentPage = 1;
 
-    function switchTab(id) {
+    function switchTab(id, btnEl) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.getElementById(id).classList.add('active');
-      event.target.classList.add('active');
+      const targetBtn = btnEl || (window.event && window.event.target);
+      if (targetBtn) targetBtn.classList.add('active');
       
-      if(id === 'analytics') {
+      if (id === 'analytics') {
         loadAnalytics();
       }
     }
@@ -283,9 +298,25 @@ export async function onRequestGet(context) {
 
     fileInput.addEventListener('change', handleFileSelect);
 
+    function formatMB(bytes) {
+      return (bytes / (1024 * 1024)).toFixed(1);
+    }
+
     function handleFileSelect() {
       if (!fileInput.files || fileInput.files.length === 0) return;
       selectedFile = fileInput.files[0];
+
+      const sizeMB = formatMB(selectedFile.size);
+      const fileMetaEl = document.getElementById('selected-file-meta');
+      const statusEl = document.getElementById('hero-upload-status');
+      fileMetaEl.textContent = \`\${selectedFile.name} · \${sizeMB} MB\`;
+
+      if (selectedFile.size > 95 * 1024 * 1024) {
+        statusEl.style.color = 'var(--heat)';
+        statusEl.textContent = 'Warning: Files over 95 MB may be rejected by Cloudflare Pages request limits. Compress to MP4 (H.264) if upload fails.';
+      } else {
+        statusEl.textContent = '';
+      }
       
       // Load video preview
       const url = URL.createObjectURL(selectedFile);
@@ -312,43 +343,70 @@ export async function onRequestGet(context) {
       fileInput.value = '';
       previewVid.src = '';
       document.getElementById('hero-upload-status').textContent = '';
-      document.getElementById('progress-wrap').style.display = 'none';
-      document.getElementById('progress-bar').style.width = '0%';
+      document.getElementById('progress-section').style.display = 'none';
+      const progressBar = document.getElementById('progress-bar');
+      progressBar.style.width = '0%';
+      progressBar.classList.remove('processing');
       previewUI.style.display = 'none';
       dropZone.style.display = 'block';
       document.getElementById('btn-hero-upload').disabled = false;
+      document.getElementById('btn-hero-cancel').disabled = false;
     }
 
-    // XHR Upload Logic
+    // XHR Upload Logic with Granular MB & Two-Stage Progress
     function uploadHeroVideo() {
       if (!selectedFile) return;
 
       const statusEl = document.getElementById('hero-upload-status');
       const btn = document.getElementById('btn-hero-upload');
-      const progressWrap = document.getElementById('progress-wrap');
+      const cancelBtn = document.getElementById('btn-hero-cancel');
+      const progressSection = document.getElementById('progress-section');
+      const progressPhase = document.getElementById('progress-phase');
+      const progressStats = document.getElementById('progress-stats');
       const progressBar = document.getElementById('progress-bar');
       const finalPosition = \`\${cropSlider.value}% 50%\`;
+      const totalMB = formatMB(selectedFile.size);
 
       const formData = new FormData();
       formData.append('video', selectedFile);
       formData.append('position', finalPosition);
 
       btn.disabled = true;
-      progressWrap.style.display = 'block';
-      statusEl.style.color = 'var(--ocean)';
-      statusEl.textContent = 'Uploading video to Cloudflare R2...';
+      cancelBtn.disabled = true;
+      progressSection.style.display = 'block';
+      progressBar.classList.remove('processing');
+      progressBar.style.width = '0%';
+      progressPhase.textContent = 'Step 1/2: Uploading to Cloudflare...';
+      progressStats.textContent = \`0.0 MB / \${totalMB} MB (0%)\`;
+      statusEl.style.color = 'var(--muted)';
+      statusEl.textContent = 'Keep this tab open until both steps complete.';
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/admin/hero-upload', true);
 
+      // Stage 1: Browser -> Cloudflare Edge transfer progress
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
-          const percentComplete = (e.loaded / e.total) * 100;
-          progressBar.style.width = percentComplete + '%';
+          const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
+          const loadedMB = formatMB(e.loaded);
+          const totalTransferMB = formatMB(e.total);
+          progressBar.style.width = pct + '%';
+          progressStats.textContent = \`\${loadedMB} MB / \${totalTransferMB} MB (\${pct}%)\`;
         }
       };
 
+      // Stage 2: Browser finished sending; Cloudflare Function is writing to R2 & D1
+      xhr.upload.onload = () => {
+        progressBar.style.width = '100%';
+        progressBar.classList.add('processing');
+        progressPhase.textContent = 'Step 2/2: Saving to Cloudflare R2...';
+        progressStats.textContent = \`\${totalMB} MB / \${totalMB} MB (100%)\`;
+        statusEl.style.color = 'var(--ocean)';
+        statusEl.textContent = 'Transfer complete. Finalizing storage in R2 bucket...';
+      };
+
       xhr.onload = function() {
+        progressBar.classList.remove('processing');
         if (xhr.status === 401) {
           window.location.reload();
           return;
@@ -357,29 +415,33 @@ export async function onRequestGet(context) {
         try {
           const data = JSON.parse(xhr.responseText);
           if (xhr.status === 200 && data.success) {
+            progressPhase.textContent = 'Complete!';
             statusEl.style.color = 'var(--reef)';
             statusEl.textContent = 'Success! Active hero video updated.';
             document.getElementById('active-video-label').textContent = data.active_video;
             document.getElementById('active-position-label').textContent = data.position;
             
-            // Hold success state for a moment before resetting UI
             setTimeout(resetUploadUI, 3000);
           } else {
             statusEl.style.color = 'var(--heat)';
-            statusEl.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+            statusEl.textContent = 'Upload failed (HTTP ' + xhr.status + '): ' + (data.error || 'Unknown error');
             btn.disabled = false;
+            cancelBtn.disabled = false;
           }
         } catch (err) {
           statusEl.style.color = 'var(--heat)';
-          statusEl.textContent = 'Error processing server response.';
+          statusEl.textContent = 'Upload failed (HTTP ' + xhr.status + '). File may exceed Cloudflare Pages 100 MB limit.';
           btn.disabled = false;
+          cancelBtn.disabled = false;
         }
       };
 
       xhr.onerror = function() {
+        progressBar.classList.remove('processing');
         statusEl.style.color = 'var(--heat)';
         statusEl.textContent = 'Network error while uploading video.';
         btn.disabled = false;
+        cancelBtn.disabled = false;
       };
 
       xhr.send(formData);
@@ -401,7 +463,7 @@ export async function onRequestGet(context) {
     }
 
     function closeModal(event) {
-      if(event) event.preventDefault();
+      if (event) event.preventDefault();
       const modal = document.getElementById('mediaModal');
       const body = document.getElementById('modalBody');
       modal.classList.remove('active');
